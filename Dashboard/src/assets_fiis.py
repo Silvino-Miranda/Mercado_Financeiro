@@ -1,0 +1,33 @@
+stock = [
+    "BCRI11.SA",
+    "ALZR11.SA",
+    "TVRI11.SA",
+    "VGIP11.SA",
+    "XPCI11.SA",
+    "HGLG11.SA",
+    "GTWR11.SA",
+    "GGRC11.SA",
+    "KNCR11.SA",
+    "RBVA11.SA",
+    "BTLG11.SA",
+    "RNGO11.SA",
+    "CVBI11.SA",
+    "BTCI11.SA",
+]
+
+stock_names = {
+    "BCRI11.SA": "BC Fund",
+    "ALZR11.SA": "Alianza Trust Renda Imobiliária",
+    "TVRI11.SA": "Tivoli Renda Imobiliária",
+    "VGIP11.SA": "Valora RE III",
+    "XPCI11.SA": "XP Crédito Imobiliário",
+    "HGLG11.SA": "CSHG Logística",
+    "GTWR11.SA": "Green Towers",
+    "GGRC11.SA": "GGR Covepi Renda",
+    "KNCR11.SA": "Kinea Rendimentos Imobiliários",
+    "RBVA11.SA": "Rio Bravo Renda Varejo",
+    "BTLG11.SA": "BTG Pactual Logística",
+    "RNGO11.SA": "Rio Negro",
+    "CVBI11.SA": "VBI CRI",
+    "BTCI11.SA": "BTG Pactual Crédito Imobiliário",
+}
