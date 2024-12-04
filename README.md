@@ -7,6 +7,7 @@ Este projeto contém scripts e ferramentas para backtesting de estratégias de t
 Estrutura de Pastas
 _backtest/: Scripts de backtesting.
 src/: Código-fonte principal.
+
 2. Análise de Dividendos da Carteira
 Projeto focado na análise de dividendos de uma carteira de investimentos.
 
@@ -14,12 +15,14 @@ Estrutura de Pastas
 ativos_ordenados_por_yoc.xlsx: Planilha com ativos ordenados por Yield on Cost (YoC).
 Dividendos.xlsx: Planilha principal de dividendos.
 src/: Código-fonte principal.
+
 3. Backtest Cripto
 Scripts e ferramentas para backtesting de estratégias de trading em criptomoedas.
 
 Estrutura de Pastas
 assets.py: Script principal para manipulação de ativos.
 __pycache__/: Cache de arquivos Python.
+
 4. Dashboard
 Projeto para criação de dashboards de visualização de dados financeiros.
 
@@ -28,6 +31,7 @@ Scripts e ferramentas para estratégias de day trading.
 
 Estrutura de Pastas
 main_chain.py: Script principal contendo funções para análise técnica, fundamentalista, fluxo de ordens e sentimento de mercado.
+
 6. Dollar-Cost Averaging (DCA)
 Projeto focado na estratégia de investimento DCA.
 
