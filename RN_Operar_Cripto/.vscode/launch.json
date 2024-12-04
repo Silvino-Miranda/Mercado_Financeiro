@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Main File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug Melhor Individuo",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/melhor_individuo.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}
