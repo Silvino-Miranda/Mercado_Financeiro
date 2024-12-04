@@ -1,0 +1,95 @@
+{
+    "info": {
+        "symbol": "ETHBRL",
+        "orderId": "888955819",
+        "orderListId": "-1",
+        "clientOrderId": "x-R4BD3S82f55cb83615667743fcd8e2",
+        "transactTime": "1721939172234",
+        "price": "0.00000000",
+        "origQty": "0.00560000",
+        "executedQty": "0.00560000",
+        "cummulativeQuoteQty": "99.00217600",
+        "status": "FILLED",
+        "timeInForce": "GTC",
+        "type": "MARKET",
+        "side": "BUY",
+        "workingTime": "1721939172234",
+        "fills": [
+            {
+                "price": "17678.96000000",
+                "qty": "0.00560000",
+                "commission": "0.00000560",
+                "commissionAsset": "ETH",
+                "tradeId": "14578428"
+            }
+        ],
+        "selfTradePreventionMode": "EXPIRE_MAKER"
+    },
+    
+    "clientOrderId": "x-R4BD3S82f55cb83615667743fcd8e2",
+    "timestamp": 1721939172234,
+    "datetime": "2024-07-25T20: 26: 12.234Z",
+    "lastTradeTimestamp": 1721939172234,
+    "lastUpdateTimestamp": 1721939172234,
+    "type": "market",
+    "timeInForce": "GTC",
+    "postOnly": False,
+    "reduceOnly": None,
+    "side": "buy",
+    "triggerPrice": None,
+
+    "id": "888955819",
+    "symbol": "ETH/BRL",
+    "price": 17678.96,
+    "amount": 0.0056,
+    "cost": 99.002176,
+    "average": 17678.96,  
+ 
+
+    "status": "closed",
+    "fee": {
+        "currency": "ETH",
+        "cost": 5.6e-06
+    },
+    "trades": [
+        {
+            "info": {
+                "price": "17678.96000000",
+                "qty": "0.00560000",
+                "commission": "0.00000560",
+                "commissionAsset": "ETH",
+                "tradeId": "14578428"
+            },
+            "timestamp": None,
+            "datetime": None,
+            "symbol": "ETH/BRL",
+            "id": "14578428",
+            "order": None,
+            "type": None,
+            "side": None,
+            "takerOrMaker": None,
+            "price": 17678.96,
+            "amount": 0.0056,
+            "cost": 99.002176,
+            "fee": {
+                "cost": 5.6e-06,
+                "currency": "ETH"
+            },
+            "fees": [
+                {
+                    "cost": 5.6e-06,
+                    "currency": "ETH"
+                }
+            ]
+        }
+    ],
+    "fees": [
+        {
+            "currency": "ETH",
+            "cost": 5.6e-06
+        }
+    ],
+    "stopPrice": None,
+    "takeProfitPrice": None,
+    "stopLossPrice": None
+}

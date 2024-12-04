@@ -1,0 +1,15 @@
+{
+    "cryptos": [
+      { "symbol": "BTC/BRL", "amount_brl": 100 },
+      { "symbol": "ETH/BRL", "amount_brl": 100 },
+      { "symbol": "FET/BRL", "amount_brl": 100 },
+      { "symbol": "SOL/BRL", "amount_brl": 100 },
+      { "symbol": "MATIC/BRL", "amount_brl": 100 },
+      { "symbol": "ADA/BRL", "amount_brl": 100 },
+      { "symbol": "LINK/BRL", "amount_brl": 100 },
+      { "symbol": "SNX/BRL", "amount_brl": 100 },
+      { "symbol": "NMR/BRL", "amount_brl": 100 },
+      { "symbol": "AVAX/BRL", "amount_brl": 100 }
+    ]
+  }
+  
