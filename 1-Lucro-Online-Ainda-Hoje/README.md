@@ -1,71 +1,96 @@
-Vamos aprimorar sua estratégia de day trade para torná-la mais robusta e eficaz:
+# Sistema de Backtest para Trading de Forex
 
-**Ativos Operados:**
-- EUR/USD
-- NZD/USD
-- AUD/USD
-- USD/CAD
+## 📈 Descrição
+Sistema automatizado de backtest para estratégias de trading em pares de moedas do mercado Forex. Utiliza médias móveis exponenciais (MME) e gestão de risco baseada em relação risco/retorno para identificar oportunidades de trading.
 
-**Indicador Técnico Utilizado:**
-- **Média Móvel Exponencial (MME) de 21 períodos** no gráfico de 4 horas.
+## 🎯 Objetivo
+Validar estratégias de trading através de testes históricos, permitindo avaliar a performance de diferentes configurações de parâmetros antes de aplicar em operações reais.
 
----
+## 🛠️ Funcionalidades
 
-### **Critérios de Entrada:**
+### Estratégia de Trading
+- **Indicador Principal**: Média Móvel Exponencial (MME) de 21 períodos
+- **Gestão de Risco**: Relação risco/retorno de 1:2
+- **Gestão de Capital**: 10% de risco por operação
+### Análise e Visualização
+- Cálculo de sinais de compra e venda
+- Simulação de operações com stop loss e take profit
+- Gráficos de evolução do saldo
+- Relatórios de performance por par de moedas
 
-- **Compra (Long):**
-  - **Condição:** O preço está acima e próximo da MME de 21 períodos.
-  - **Racional:** Indica uma tendência de alta, sugerindo que o momento é propício para comprar.
+## 📁 Estrutura do Projeto
+```
+1-Lucro-Online-Ainda-Hoje/
+├── src/
+│   ├── main.py                 # Script principal
+│   └── utils/
+│       ├── backtest.py         # Função principal de backtest
+│       ├── obter_dados.py      # Coleta de dados históricos
+│       ├── calcular_mme.py     # Cálculo da MME
+│       ├── identificar_sinais.py # Identificação de sinais
+│       └── executar_backtest.py # Execução do backtest
+├── _backtest/                  # Resultados dos testes
+│   └── EURUSD=X.csv           # Dados históricos
+├── requirements.txt            # Dependências
+└── README.md                  # Este arquivo
+```
 
-- **Venda (Short):**
-  - **Condição:** O preço está abaixo e próximo da MME de 21 períodos.
-  - **Racional:** Indica uma tendência de baixa, sugerindo que é um bom momento para vender.
+## 🚀 Como Usar
 
-### **Gestão de Risco:**
+### 1. Instalação das Dependências
+```bash
+pip install -r requirements.txt
+```
 
-- **Risco/Retorno 1:2:**
-  - **Estratégia:** Para cada unidade de risco assumida, o objetivo é ganhar duas unidades.
-  - **Benefício:** Esta relação permite que mesmo com uma taxa de acerto inferior a 50%, você possa ser lucrativo a longo prazo.
+### 2. Configuração dos Parâmetros
+No arquivo `main.py`, ajuste os parâmetros conforme necessário:
+```python
+MME_PERIOD = 21          # Período da MME
+RISCO_RETORNO = 2        # Relação risco/retorno
+TAMANHO_POSICAO = 1      # Tamanho da posição
+RISK_PERCENTAGE = 0.1    # Percentual de risco
+```
 
-- **Tamanho da Posição:**
-  - **Início com 0,01 lote:**
-    - **Motivo:** Minimiza o risco enquanto você se familiariza com a estratégia e avalia sua eficácia.
+### 3. Execução
+```bash
+cd src
+python main.py
+```
 
----
+### 4. Análise dos Resultados
+- Os resultados são salvos em arquivos CSV na pasta `_backtest/`
+- Gráficos de performance são exibidos automaticamente
+- Métricas de saldo final e evolução temporal
 
-### **Melhorias Sugeridas:**
+## 📊 Saídas do Sistema
+- **Arquivos CSV**: Histórico completo de operações e saldos
+- **Gráficos**: Evolução do saldo ao longo do tempo
+- **Console**: Resumo de performance por par de moedas
 
-1. **Confirmação com Indicadores Adicionais:**
-   - **Índice de Força Relativa (RSI):** Utilize para identificar sobrecompra ou sobrevenda, evitando entradas em momentos desfavoráveis.
-   - **MACD:** Ajuda a identificar mudanças na dinâmica do mercado e possíveis reversões.
+## 🔧 Principais Dependências
+- `yfinance`: Coleta de dados financeiros
+- `pandas`: Manipulação de dados
+- `matplotlib`: Visualização de gráficos
+- `numpy`: Cálculos numéricos
 
-2. **Análise de Suporte e Resistência:**
-   - **Níveis-Chave:** Identifique áreas onde o preço historicamente encontra obstáculos, ajustando suas entradas e saídas de acordo.
+## 📈 Indicadores Utilizados
+- **MME (Média Móvel Exponencial)**: Identificação de tendências
+- **Stop Loss**: Limitação de perdas
+- **Take Profit**: Realização de lucros
+- **Gestão de Capital**: Controle de risco por operação
 
-3. **Definição Clara de Stop Loss e Take Profit:**
-   - **Stop Loss:**
-     - **Compras:** Coloque abaixo do último fundo significativo.
-     - **Vendas:** Coloque acima do último topo significativo.
-   - **Take Profit:**
-     - **Objetivo de Lucro:** Defina com base na relação risco/retorno de 1:2.
+## ⚠️ Aviso Legal
+Este sistema é destinado apenas para fins educacionais e de pesquisa. Não constitui aconselhamento financeiro. Trading de Forex envolve riscos significativos e pode resultar em perdas substanciais.
 
-4. **Gerenciamento de Operações:**
-   - **Trailing Stop:** Considere usar para proteger os lucros à medida que o mercado se move a seu favor.
-   - **Parcialização:** Realize lucros parciais em níveis-chave para garantir ganhos.
+## 🤝 Contribuições
+Contribuições são bem-vindas! Sinta-se à vontade para:
+- Reportar bugs
+- Sugerir melhorias
+- Adicionar novos indicadores
+- Melhorar a documentação
 
-5. **Horários de Operação:**
-   - **Sessões Mais Ativas:** Foque nas sobreposições das sessões de Londres e Nova Iorque, onde a liquidez e a volatilidade são maiores.
-   - **Evitar Notícias de Alto Impacto:** Consulte o calendário econômico e evite operar durante anúncios importantes que possam causar volatilidade excessiva.
-
-6. **Jornal de Trades:**
-   - **Registro Detalhado:** Anote todas as entradas, saídas, motivos da operação e resultados.
-   - **Análise Periódica:** Revise regularmente para identificar padrões e áreas de melhoria.
-
-7. **Disciplina e Controle Emocional:**
-   - **Plano de Trading:** Siga rigorosamente seu plano e evite decisões impulsivas.
-   - **Limites Diários:** Estabeleça limites de perda diários para proteger seu capital.
-
-8. **Educação Contínua:**
+## 📝 Licença
+Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
    - **Atualização Constante:** Mantenha-se informado sobre as condições macroeconômicas que afetam os pares de moedas que você negocia.
    - **Aprimoramento de Habilidades:** Invista em cursos e materiais que aprofundem seu conhecimento em análise técnica e fundamental.
 
