@@ -411,6 +411,12 @@ def print_summary(metrics: Dict[str, float], p: Params):
 # ---------------------- Grid Search ----------------------
 
 def grid_search(df: pd.DataFrame) -> pd.DataFrame:
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        print("Warning: tqdm not installed. Install with 'pip install tqdm' for progress bar.")
+        tqdm = None
+    
     rows = []
     variants = ["base", "rsi", "reclaim"]
     dist_list = [0.03, 0.05, 0.07, 0.10]
@@ -420,6 +426,16 @@ def grid_search(df: pd.DataFrame) -> pd.DataFrame:
     time_stop_list = [20, 30, 45]
     ma_list = [180, 200, 220]
     be_list = [True, False]
+
+    # Calculate total combinations
+    total = (len(variants) * len(dist_list) * len(tp_list) * len(sl_list) * 
+             len(atr_mult_list) * len(time_stop_list) * len(ma_list) * len(be_list))
+    
+    print(f"Total combinations to test: {total}")
+    print(f"Estimated time: ~{total * 0.1:.1f} seconds (assuming ~0.1s per backtest)")
+    
+    # Create progress bar if tqdm is available
+    pbar = tqdm(total=total, desc="Grid Search Progress", unit="run") if tqdm else None
 
     for variant in variants:
         for dist in dist_list:
@@ -453,6 +469,12 @@ def grid_search(df: pd.DataFrame) -> pd.DataFrame:
                                         **metrics
                                     }
                                     rows.append(row)
+                                    if pbar:
+                                        pbar.update(1)
+    
+    if pbar:
+        pbar.close()
+    
     res = pd.DataFrame(rows)
     # Sort by Profit Factor then Total PnL then lower Max DD
     res = res.sort_values(by=["profit_factor", "total_pnl", "max_drawdown"], ascending=[False, False, True])
