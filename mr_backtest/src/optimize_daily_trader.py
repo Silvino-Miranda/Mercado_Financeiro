@@ -64,20 +64,20 @@ def create_daily_trader_ranges() -> dict:
         ),
         'dist_below_ma_pct': ParamRange(
             name='dist_below_ma_pct',
-            min_val=0.05, max_val=0.15,  # MAIS AMPLO - mais sinais
+            min_val=0.05, max_val=0.20,  # AMPLO: 5-20% (0.10=10% funciona bem no grid)
             step=0.01,
             param_type='float'
         ),
         'tp_pct': ParamRange(
             name='tp_pct',
-            min_val=0.02, max_val=0.05,  # TP PEQUENO - 2-5% para saídas rápidas
-            step=0.005,
+            min_val=0.05, max_val=0.15,  # TP: 5-15% (0.10=10% funciona bem no grid)
+            step=0.01,
             param_type='float'
         ),
         'sl_pct': ParamRange(
             name='sl_pct',
-            min_val=0.01, max_val=0.03,  # SL PEQUENO - 1-3% para controle rápido
-            step=0.005,
+            min_val=0.05, max_val=0.15,  # SL: 5-15% (0.10=10% funciona bem no grid)
+            step=0.01,
             param_type='float'
         ),
         'atr_mult': ParamRange(
@@ -148,7 +148,7 @@ class DailyTraderOptimizer:
             mutation_rate=0.30,  # Higher mutation for exploration
             crossover_rate=0.75,
             elitism_rate=0.10,  # Keep top 10%
-            min_trades=int(self.min_trades_per_year * 5.78 / 365)  # Scale to dataset years
+            min_trades=5  # Mínimo de 5 trades (mais realista que 200/ano)
         )
         
         return optimizer
