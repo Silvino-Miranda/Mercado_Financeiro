@@ -1,7 +1,7 @@
 # 🎉 Refatoração Modular - Progresso Consolidado
 
 **Data:** 13 de outubro de 2025  
-**Status Geral:** 50% Completo (3/6 módulos)
+**Status Geral:** 67% Completo (4/6 módulos)
 
 ---
 
@@ -12,11 +12,11 @@
 | **Download** | ✅ 100% | 4 | ~450 | ✅ | ✅ |
 | **Backtest** | ✅ 100% | 7 | ~1,125 | ✅ | ✅ |
 | **Config** | ✅ 100% | 5 | ~992 | ✅ | ✅ |
-| **Optimization** | ⏳ 0% | - | - | - | - |
+| **Optimization** | ✅ 100% | 6 | ~1,050 | ✅ | ✅ |
 | **Analysis** | ⏳ 0% | - | - | - | - |
 | **Cleanup** | ⏳ 0% | - | - | - | - |
 
-**Total Refatorado:** 16 arquivos, ~2,567 linhas de código modular
+**Total Refatorado:** 22 arquivos, ~3,617 linhas de código modular
 
 ---
 
@@ -146,6 +146,92 @@ src/module/
 - ✅ **Manutenibilidade** - Fácil localizar e modificar código
 - ✅ **Reusabilidade** - Componentes podem ser usados independentemente
 - ✅ **CLI Integrada** - `python -m src.module` em todos
+
+---
+
+### 4. Optimization Module ✅
+
+**Estrutura:**
+```
+src/optimization/
+├── __init__.py        # Exports
+├── __main__.py        # CLI: python -m src.optimization (2 comandos)
+├── types.py           # Individual, OptimizationObjective
+├── genetic.py         # GeneticOptimizer (GA implementation)
+├── grid.py            # GridSearchOptimizer
+└── utils.py           # Helper functions
+```
+
+**Funcionalidades:**
+- ✅ Algoritmo genético completo (população, seleção, crossover, mutação, elitismo)
+- ✅ Grid search exaustivo
+- ✅ Multi-objective optimization (6 objetivos diferentes)
+- ✅ Taxa de mutação adaptativa (decai com gerações)
+- ✅ Tournament selection (k=3)
+- ✅ Uniform crossover
+- ✅ CLI com 2 comandos (genetic, grid)
+- ✅ Exportação de resultados e histórico
+
+**Componentes Principais:**
+
+**OptimizationObjective enum:**
+- `PROFIT_FACTOR`: Maximizar profit factor
+- `TOTAL_PNL`: Maximizar PnL total
+- `SHARPE`: Maximizar Sharpe-like ratio
+- `TRADES_PER_YEAR`: Maximizar frequência de trades
+- `ROI`: Maximizar retorno sobre investimento
+- `MULTI`: Multi-objetivo (combinação ponderada)
+
+**GeneticOptimizer:**
+- População de configurações
+- Evolução ao longo de gerações
+- Elitismo (preserva melhores indivíduos)
+- Crossover uniforme entre pais
+- Mutação adaptativa
+- Fitness multi-objetivo ponderado
+
+**GridSearchOptimizer:**
+- Busca exaustiva no espaço de parâmetros
+- Progress bar com tqdm
+- Ordenação por múltiplas métricas
+- Exportação completa de resultados
+
+**Testes:**
+```bash
+# Genetic algorithm
+python -m src.optimization genetic --csv data/BTCUSDT_test.csv --population 10 --generations 3 --objective multi
+# ✅ 30 evaluations (10 pop × 3 gen), executou corretamente
+
+# Grid search
+python -m src.optimization grid --csv data/BTCUSDT_test.csv --ranges narrow --show_top 10
+# ✅ Testa todas combinações, salva resultados
+```
+
+**Fitness Function (Multi-Objective):**
+```python
+fitness = (
+    0.35 * normalized_profit_factor +
+    0.25 * normalized_win_rate +
+    0.20 * normalized_trades_per_year +
+    0.20 * normalized_total_pnl
+)
+```
+
+**Métricas:**
+- Linhas originais: ~427 (genetic_optimizer.py)
+- Linhas modularizadas: ~1,050 (6 arquivos)
+- Expansão: +145% (mais documentação, validação, CLI)
+- Complexidade ciclomática: Reduzida significativamente
+
+---
+```
+
+### Benefícios do Padrão:
+- ✅ **Consistência** - Todos os módulos têm estrutura similar
+- ✅ **Testabilidade** - Componentes isolados e testáveis
+- ✅ **Manutenibilidade** - Fácil localizar e modificar código
+- ✅ **Reusabilidade** - Componentes podem ser usados independentemente
+- ✅ **CLI Integrada** - `python -m src.module` em todos
 - ✅ **Documentação** - Docstrings completas em todos os arquivos
 
 ---
@@ -155,13 +241,13 @@ src/module/
 ### Código Modular
 | Métrica | Valor |
 |---------|-------|
-| Módulos completos | 3 / 6 (50%) |
-| Arquivos criados | 16 |
-| Linhas de código | ~2,567 |
-| Média linhas/arquivo | ~160 |
-| CLIs implementadas | 3 |
-| Comandos CLI total | 12+ |
-| Design patterns | 8+ |
+| Módulos completos | 4 / 6 (67%) |
+| Arquivos criados | 22 |
+| Linhas de código | ~3,617 |
+| Média linhas/arquivo | ~164 |
+| CLIs implementadas | 4 |
+| Comandos CLI total | 14+ |
+| Design patterns | 9+ |
 
 ### Qualidade
 | Aspecto | Status |
@@ -262,6 +348,19 @@ params = config.to_params()
 from src.backtest import BacktestEngine
 engine = BacktestEngine(params)
 result = engine.run(df)
+
+# Optimization
+from src.optimization import GeneticOptimizer, OptimizationObjective
+from src.config import create_narrow_ranges
+
+optimizer = GeneticOptimizer(
+    csv_data_path="data/BTCUSDT_daily.csv",
+    population_size=50,
+    generations=20,
+    objective=OptimizationObjective.MULTI,
+    param_ranges=create_narrow_ranges()
+)
+best_config = optimizer.run()
 
 # Análise
 print(f"PnL: ${result.metrics['total_pnl']:.2f}")
