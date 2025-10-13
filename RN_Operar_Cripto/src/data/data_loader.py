@@ -12,23 +12,31 @@ from src.data.data_save import DataSave
 class DataLoader:
     def __init__(
         self,
-        symbol="BTC-USD",
-        start_date="2015-01-01",
+        symbol="BTCUSDT",
+        start_date=None,
         end_date=None,
-        interval="1h",
+        interval="30m",
         data_dir="data",
+        use_local_file=True,
+        local_filename="BTCUSDT_30m.csv"
     ):
         self.symbol = symbol
         self.start_date = start_date
         self.end_date = end_date if end_date else datetime.now().strftime("%Y-%m-%d")
         self.interval = interval
         self.data_dir = data_dir
+        self.use_local_file = use_local_file
+        self.local_filename = local_filename
 
-        # Criar o nome do arquivo com base no símbolo e intervalo de tempo
-        self.filename = f"{self.symbol}_{self.start_date}_to_{self.end_date}_{self.interval}".replace(
-            "/", "-"
-        )
-        self.filepath = os.path.join(self.data_dir, self.filename)
+        # Se usar arquivo local, definir o caminho direto
+        if self.use_local_file:
+            self.filepath = os.path.join(self.data_dir, self.local_filename)
+        else:
+            # Criar o nome do arquivo com base no símbolo e intervalo de tempo
+            self.filename = f"{self.symbol}_{self.start_date}_to_{self.end_date}_{self.interval}".replace(
+                "/", "-"
+            )
+            self.filepath = os.path.join(self.data_dir, self.filename)
 
     def download_data(self):
         # Verificar se end_date não está no futuro
@@ -100,11 +108,21 @@ class DataLoader:
         return calculator.calculate_indicators()
 
     def load_data(self):
-        # Verificar se o arquivo existe, se sim, carregar os dados do arquivo Parquet
+        # Verificar se o arquivo existe, se sim, carregar os dados do arquivo CSV
         if os.path.exists(self.filepath):
             df = pd.read_csv(self.filepath)
             print(f"Dados carregados do arquivo {self.filepath}.")
+            
+            # Garantir que a coluna 'Date' existe e está no formato correto
+            if 'Date' in df.columns:
+                df['Date'] = pd.to_datetime(df['Date'])
+            
+            # Adicionar indicadores técnicos se ainda não existirem
+            if 'SMA_20' not in df.columns:
+                print("Calculando indicadores técnicos...")
+                df = self.add_indicators(df)
         else:
             print("Arquivo de dados não encontrado. Baixando dados...")
             df = self.download_data()
+        
         return df

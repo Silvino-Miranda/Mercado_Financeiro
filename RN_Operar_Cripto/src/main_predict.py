@@ -7,12 +7,16 @@ import pandas as pd
 
 def main():
     # Definições de parâmetros
-    symbol = "BTC-USD"
-    start_date = "2010-01-01"
-    interval = "1d"
+    symbol = "BTCUSDT"
+    interval = "30m"
 
-    # Carregar os dados de hora em hora ou diário
-    data_loader = DataLoader(symbol=symbol, start_date=start_date, interval=interval)
+    # Carregar os dados do arquivo local BTCUSDT_30m.csv
+    data_loader = DataLoader(
+        symbol=symbol, 
+        interval=interval,
+        use_local_file=True,
+        local_filename="BTCUSDT_30m.csv"
+    )
     data = data_loader.load_data()
 
     # Verificar se há valores não numéricos ou inconsistentes

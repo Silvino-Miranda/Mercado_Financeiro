@@ -8,12 +8,16 @@ import pandas as pd
 
 def main():
     # Definições de parâmetros
-    symbol = "BTC-USD"
-    start_date = "2024-01-01"  # Ajuste a data de início conforme necessário
-    interval = "1d"  # Pode ser '1d' para diário ou '1h' para horário
+    symbol = "BTCUSDT"
+    interval = "30m"  # Intervalo de 30 minutos
 
-    # Carregar os dados com indicadores técnicos já calculados
-    data_loader = DataLoader(symbol=symbol, start_date=start_date, interval=interval)
+    # Carregar os dados do arquivo local BTCUSDT_30m.csv com indicadores técnicos
+    data_loader = DataLoader(
+        symbol=symbol, 
+        interval=interval,
+        use_local_file=True,
+        local_filename="BTCUSDT_30m.csv"
+    )
     df = data_loader.load_data()
 
     # Definir colunas de features e targets

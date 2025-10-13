@@ -4,7 +4,7 @@ import plotly.express as px
 import pandas as pd
 
 # Definir o caminho para o arquivo CSV
-csv_file_path = 'capital_history-petr4.sa.csv'  # Substitua pelo caminho correto
+csv_file_path = 'capital_history-BTCUSDT.csv'  # Arquivo de histórico do Bitcoin
 
 # Carregar o arquivo CSV com tratamento de exceções
 try:
@@ -50,10 +50,11 @@ else:
 app = dash.Dash(__name__)
 
 app.layout = html.Div(children=[
-    html.H1(children='Análise de Previsões'),
+    html.H1(children='Análise de Previsões - BTC/USDT (30min)'),
 
     html.Div(children='''
-        Comparação entre as previsões do modelo e os valores reais.
+        Comparação entre as previsões do modelo LSTM e os valores reais do Bitcoin.
+        Intervalo: 30 minutos | Par: BTC/USDT
     '''),
 
     dcc.Graph(
