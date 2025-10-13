@@ -1,0 +1,2 @@
+variant,ma_len,rsi_period,slope_lookback,dist_below_ma_pct,rsi_cross_level,tp_pct,sl_pct,atr_mult,time_stop,be_trigger_pct,allow_breakeven,fees_bps,slip_bps,capital_per_trade,name,description
+base,200,14,5,0.05,30.0,0.12,0.08,2.0,30,0.06,True,10.0,5.0,1000.0,test_champ,
