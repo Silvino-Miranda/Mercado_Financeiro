@@ -13,13 +13,29 @@ Meta: Encontrar configuração com 50-200 trades/ano
 import sys
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mr_backtest import backtest, analyze, load_ohlc_csv, Params
+# Updated imports - using new modular structure
+from src.backtest import BacktestEngine, Params
+from src.backtest.utils import load_ohlc_csv
 import pandas as pd
 from tqdm import tqdm
 from datetime import datetime
+
+
+# Compatibility functions to match old API
+def backtest(df, params):
+    """Compatibility wrapper for old API"""
+    engine = BacktestEngine(params)
+    result = engine.run(df)
+    return result.trades, result.equity_curve
+
+
+def analyze(trades, equity_curve, df):
+    """Compatibility wrapper for old API"""
+    from src.backtest.utils import calculate_metrics
+    return calculate_metrics(trades, equity_curve, df)
 
 def grid_search_1h():
     """Grid search otimizado para 1H"""

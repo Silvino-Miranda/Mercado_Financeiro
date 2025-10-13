@@ -28,16 +28,32 @@ import argparse
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from genetic_optimizer import GeneticOptimizer, OptimizationObjective
-from config import (
+# Updated imports - using new modular structure
+from src.optimization import GeneticOptimizer, OptimizationObjective
+from src.config import (
     StrategyConfig, save_params_to_csv, create_default_ranges, 
     create_narrow_ranges, ParamRange
 )
-from mr_backtest import backtest, analyze, load_ohlc_csv
+from src.backtest import BacktestEngine
+from src.backtest.utils import load_ohlc_csv, calculate_metrics
+
+
+# Compatibility functions to match old API
+def backtest(df, params):
+    """Compatibility wrapper for old API"""
+    engine = BacktestEngine(params)
+    result = engine.run(df)
+    return result.trades, result.equity_curve
+
+
+def analyze(trades, equity_curve, df):
+    """Compatibility wrapper for old API"""
+    return calculate_metrics(trades, equity_curve, df)
 
 
 def create_roi_focused_ranges() -> dict:

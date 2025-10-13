@@ -32,13 +32,16 @@ import json
 import pickle
 from datetime import datetime
 from typing import Optional, Dict, List
+from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, os.path.dirname(__file__))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from genetic_optimizer import GeneticOptimizer, OptimizationObjective
-from config import StrategyConfig, save_params_to_csv, ParamRange
-from mr_backtest import backtest, analyze, load_ohlc_csv
+# Updated imports - using new modular structure
+from src.optimization import GeneticOptimizer, OptimizationObjective
+from src.config import StrategyConfig, save_params_to_csv, ParamRange
+from src.backtest import BacktestEngine
+from src.backtest.utils import load_ohlc_csv
 
 
 def create_daily_trader_ranges() -> dict:
