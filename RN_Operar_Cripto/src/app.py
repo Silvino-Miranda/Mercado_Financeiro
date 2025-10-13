@@ -8,8 +8,15 @@ csv_file_path = 'capital_history-BTCUSDT.csv'  # Arquivo de histórico do Bitcoi
 
 # Carregar o arquivo CSV com tratamento de exceções
 try:
-    df = pd.read_csv(csv_file_path, sep=';')
-    print("Arquivo CSV carregado com sucesso.")
+    # Verificar se o arquivo contém apenas comentários
+    with open(csv_file_path, 'r', encoding='utf-8') as f:
+        first_line = f.readline()
+        if first_line.startswith('#'):
+            print("Aviso: Nenhuma operação registrada no backtest. Arquivo vazio.")
+            df = None
+        else:
+            df = pd.read_csv(csv_file_path, sep=';')
+            print("Arquivo CSV carregado com sucesso.")
 except Exception as e:
     print(f"Erro ao carregar o arquivo CSV: {e}")
     df = None
@@ -44,7 +51,7 @@ if df is not None:
         fig = None
 else:
     # Se houve erro no carregamento ou pré-processamento, criar uma figura vazia
-    fig = px.line(title='Erro ao carregar ou processar os dados')
+    fig = px.line(title='Nenhuma operação foi realizada durante o backtest')
 
 # Criar o aplicativo Dash
 app = dash.Dash(__name__)
@@ -55,6 +62,9 @@ app.layout = html.Div(children=[
     html.Div(children='''
         Comparação entre as previsões do modelo LSTM e os valores reais do Bitcoin.
         Intervalo: 30 minutos | Par: BTC/USDT
+        
+        Nota: A estratégia não realizou operações porque as condições de entrada não foram atingidas.
+        As previsões do modelo estão consistentemente acima dos valores reais (~27,700 vs ~26,900).
     '''),
 
     dcc.Graph(

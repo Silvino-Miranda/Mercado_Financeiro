@@ -43,7 +43,7 @@ class LSTMModel:
             monitor="val_loss", patience=10, restore_best_weights=True, verbose=1
         )
         checkpoint = ModelCheckpoint(
-            filepath="model_weights_epoch_{epoch:02d}.h5",
+            filepath="model_weights_epoch_{epoch:02d}.weights.h5",
             save_weights_only=True,
             monitor="val_loss",
             mode="min",

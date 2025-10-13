@@ -76,11 +76,22 @@ class DataPreprocessor:
 
         print(data.head())
         # Remover valores ausentes nas colunas de interesse
+        print(f"Total de linhas antes de remover NaN: {len(data)}")
         data = data.dropna(subset=all_columns)
+        print(f"Total de linhas após remover NaN: {len(data)}")
+        
+        if len(data) == 0:
+            raise ValueError(
+                "Após remover valores NaN, não restaram dados suficientes. "
+                "Verifique se os indicadores técnicos foram calculados corretamente."
+            )
 
         # Extrair as features e os targets
         feature_data = data[self.feature_columns].values
         target_data = data[self.target_columns].values
+        
+        print(f"Shape dos dados de features: {feature_data.shape}")
+        print(f"Shape dos dados de targets: {target_data.shape}")
 
         # Ajustar ou aplicar o scaler
         if fit_scaler:
@@ -97,12 +108,13 @@ class DataPreprocessor:
             [scaled_features[i : i + self.sequence_length] for i in range(num_samples)]
         )
         Y = np.array(
-            [scaled_targets[i + self.sequence_length - 1] for i in range(num_samples)]
+            [scaled_targets[i + self.sequence_length] for i in range(num_samples)]
         )
 
-        dates = dates[self.sequence_length - 1 :]  # Ajuste do tamanho de dates
+        dates = dates[self.sequence_length:]  # Ajuste do tamanho de dates
 
         print("Preprocessamento concluído.")
+        print(f"X shape: {X.shape}, Y shape: {Y.shape}, dates length: {len(dates)}")
         return X, Y, dates
 
     def split_data(

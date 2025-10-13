@@ -5,8 +5,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-from src.data.indicator import IndicatorCalculator
-from src.data.data_save import DataSave
+from data.indicator import IndicatorCalculator
+from data.data_save import DataSave
 
 
 class DataLoader:

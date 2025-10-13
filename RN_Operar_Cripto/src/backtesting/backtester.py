@@ -3,7 +3,7 @@ import backtrader as bt
 import pandas as pd
 import locale
 
-from my_strategy import MyStrategy
+from backtesting.my_strategy import MyStrategy
 
 
 class CustomPandasData(bt.feeds.PandasData):
@@ -74,6 +74,16 @@ class Backtester:
     def save_capital_history(self, filepath):
         # Criar um DataFrame com o histórico de trades
         df = pd.DataFrame(self.trade_history)
+        
+        # Se não há trades, salvar arquivo vazio com mensagem
+        if df.empty:
+            with open(filepath, 'w') as f:
+                f.write("# Nenhuma operação foi realizada durante o backtest\n")
+                f.write(f"# Capital inicial: {self.initial_capital}\n")
+                f.write(f"# Capital final: {self.cerebro.broker.getvalue():.2f}\n")
+            print(f"Aviso: Nenhuma operação foi realizada. Arquivo salvo com informações básicas.")
+            return
+        
         # Formatar as colunas numéricas
         df["Previsao"] = df["Previsao"].apply(
             lambda x: locale.format_string("%.2f", x, grouping=True)

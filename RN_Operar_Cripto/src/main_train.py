@@ -21,19 +21,13 @@ def main():
     df = data_loader.load_data()
 
     # Definir colunas de features e targets
+    # Nota: Removido OBV, RSI_14, MACD, Stoch, BB porque dependem de Volume ou têm muitos NaN
     feature_columns = [
         "Open",
         "High",
         "Low",
         "SMA_20",
         "EMA_20",
-        "RSI_14",
-        "MACD",
-        "MACD_Signal",
-        "BB_High",
-        "BB_Low",
-        "Stoch",
-        "OBV",
     ]
     target_columns = ["Close", "High", "Low"]
 
