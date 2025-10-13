@@ -40,7 +40,7 @@ from src.config import (
     create_narrow_ranges, ParamRange
 )
 from src.backtest import BacktestEngine
-from src.backtest.utils import load_ohlc_csv, calculate_metrics
+from src.backtest.utils import load_ohlc_csv
 
 
 # Compatibility functions to match old API
@@ -49,11 +49,6 @@ def backtest(df, params):
     engine = BacktestEngine(params)
     result = engine.run(df)
     return result.trades, result.equity_curve
-
-
-def analyze(trades, equity_curve, df):
-    """Compatibility wrapper for old API"""
-    return calculate_metrics(trades, equity_curve, df)
 
 
 def create_roi_focused_ranges() -> dict:
@@ -202,8 +197,9 @@ def validate_config(config: StrategyConfig, csv_path: str):
     
     df = load_ohlc_csv(csv_path)
     params = config.to_params()
-    trades, ec = backtest(df, params)
-    metrics = analyze(trades, ec, df)
+    engine = BacktestEngine(params)
+    result = engine.run(df)
+    metrics = result.metrics
     
     roi = metrics['total_pnl'] / abs(metrics['max_drawdown']) if metrics['max_drawdown'] != 0 else 0
     
