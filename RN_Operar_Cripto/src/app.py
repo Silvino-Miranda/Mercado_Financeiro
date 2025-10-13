@@ -9,7 +9,7 @@ csv_file_path = 'capital_history-BTCUSDT.csv'  # Arquivo de histórico do Bitcoi
 # Carregar o arquivo CSV com tratamento de exceções
 try:
     # Verificar se o arquivo contém apenas comentários
-    with open(csv_file_path, 'r', encoding='utf-8') as f:
+    with open(csv_file_path, 'r', encoding='latin-1') as f:
         first_line = f.readline()
         if first_line.startswith('#'):
             print("Aviso: Nenhuma operação registrada no backtest. Arquivo vazio.")
@@ -75,4 +75,4 @@ app.layout = html.Div(children=[
 
 if __name__ == '__main__':
     print("Iniciando o servidor Dash...")
-    app.run_server(debug=True)
+    app.run(debug=True)

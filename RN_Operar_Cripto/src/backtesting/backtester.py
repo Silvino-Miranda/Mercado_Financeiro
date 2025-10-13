@@ -13,9 +13,17 @@ class CustomPandasData(bt.feeds.PandasData):
         "actual",
     )
     # Mapeie as colunas do DataFrame para as linhas do Backtrader
+    # Use nomes de colunas ao invés de índices
     params = (
-        ("prediction", -1),
-        ("actual", -1),
+        ("datetime", None),
+        ("open", "open"),
+        ("high", "high"),
+        ("low", "low"),
+        ("close", "close"),
+        ("volume", "volume"),
+        ("openinterest", None),
+        ("prediction", "prediction"),
+        ("actual", "actual"),
     )
 
 
