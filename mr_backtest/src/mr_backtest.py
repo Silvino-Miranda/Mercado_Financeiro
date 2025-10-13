@@ -501,9 +501,15 @@ def load_ohlc_csv(path: str) -> pd.DataFrame:
     return df[["Date", "Open", "High", "Low", "Close"]]
 
 
+def get_project_root() -> str:
+    """Get the project root directory (parent of src/)."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--csv", required=True, help="Path to daily OHLC CSV for BTCUSDT")
+    parser.add_argument("--csv", help="Path to daily OHLC CSV for BTCUSDT (default: data/BTCUSDT_daily.csv)")
+    parser.add_argument("--config", help="Path to config CSV file (loads params from config/)")
     parser.add_argument("--variant", choices=["base", "rsi", "reclaim"], default="base")
     parser.add_argument("--capital_per_trade", type=float, default=1000.0)
     parser.add_argument("--fees_bps", type=float, default=10.0)
@@ -519,32 +525,54 @@ def main():
     parser.add_argument("--no_breakeven", action="store_true", help="Disable breakeven move")
     args = parser.parse_args()
 
+    # Determine project root and default paths
+    project_root = get_project_root()
+    
+    # Default CSV path if not provided
+    if not args.csv:
+        args.csv = os.path.join(project_root, "data", "BTCUSDT_daily.csv")
+    
+    # Load CSV data
     df = load_ohlc_csv(args.csv)
+
+    # Load params from config if specified
+    if args.config:
+        try:
+            from config import load_params_from_csv
+            config_path = args.config if os.path.isabs(args.config) else os.path.join(project_root, "config", args.config)
+            config = load_params_from_csv(config_path)
+            p = config.to_params()
+            print(f"Loaded parameters from: {config_path}")
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            return
+    else:
+        # Use command-line arguments
+        p = Params(
+            variant=args.variant,
+            capital_per_trade=args.capital_per_trade,
+            fees_bps=args.fees_bps,
+            slip_bps=args.slip_bps,
+            tp_pct=args.tp_pct,
+            sl_pct=args.sl_pct,
+            atr_mult=args.atr_mult,
+            time_stop=args.time_stop,
+            be_trigger_pct=args.be_trigger_pct,
+            ma_len=args.ma_len,
+            dist_below_ma_pct=args.dist_below_ma_pct,
+            allow_breakeven=(not args.no_breakeven)
+        )
 
     if args.grid:
         print("Running grid search... (this can take a while)")
         res = grid_search(df)
-        out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "grid_results.csv")
+        out_path = os.path.join(project_root, "data", "grid_results.csv")
         res.to_csv(out_path, index=False)
         print(f"Grid complete. Saved: {out_path}")
         print("Top 10 rows:")
         print(res.head(10).to_string(index=False))
         return
 
-    p = Params(
-        variant=args.variant,
-        capital_per_trade=args.capital_per_trade,
-        fees_bps=args.fees_bps,
-        slip_bps=args.slip_bps,
-        tp_pct=args.tp_pct,
-        sl_pct=args.sl_pct,
-        atr_mult=args.atr_mult,
-        time_stop=args.time_stop,
-        be_trigger_pct=args.be_trigger_pct,
-        ma_len=args.ma_len,
-        dist_below_ma_pct=args.dist_below_ma_pct,
-        allow_breakeven=(not args.no_breakeven)
-    )
     trades, ec = backtest(df, p)
     metrics = analyze(trades, ec, df)
     print_summary(metrics, p)
@@ -562,7 +590,7 @@ def main():
             "reason": t.reason,
             "bars_held": t.bars_held
         } for t in trades])
-        out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trades.csv")
+        out_path = os.path.join(project_root, "data", "trades.csv")
         td.to_csv(out_path, index=False)
         print(f"Saved individual trades to: {out_path}")
 

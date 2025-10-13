@@ -19,8 +19,8 @@ References:
 - Binance API: https://api.binance.com/api/v3/klines
 """
 import argparse
-import csv
 import datetime as dt
+import os
 import time
 from typing import Optional
 
@@ -96,10 +96,16 @@ def main():
     p.add_argument('--start', default='2020-01-01')
     p.add_argument('--end', default=None)
     p.add_argument('--limit', type=int, default=1000)
-    p.add_argument('--out', default='BTCUSDT_daily.csv')
+    p.add_argument('--out', default='BTCUSDT_daily.csv', help='Output CSV filename (saves to data/ folder)')
     args = p.parse_args()
 
-    out = download_range(args.symbol, args.interval, args.start, args.end, args.out, limit=args.limit)
+    # Resolve output path to data/ folder
+    out_path = args.out
+    if not os.path.isabs(out_path):
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out_path = os.path.join(project_root, "data", out_path)
+    
+    out = download_range(args.symbol, args.interval, args.start, args.end, out_path, limit=args.limit)
     print(f"Saved OHLC CSV to: {out}")
 
 

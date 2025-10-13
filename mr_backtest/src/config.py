@@ -27,11 +27,10 @@ Usage:
     )
 """
 
-import csv
 import json
+import os
 from dataclasses import dataclass, asdict, fields
 from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
 import pandas as pd
 
 
@@ -218,28 +217,58 @@ class ConfigManager:
 
 # Helper functions
 
+def get_project_root() -> str:
+    """Get the project root directory (parent of src/)."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def resolve_config_path(csv_path: str) -> str:
+    """Resolve config path: if relative, look in config/ folder."""
+    if os.path.isabs(csv_path):
+        return csv_path
+    # If just a filename, look in config/ folder
+    if os.sep not in csv_path and '/' not in csv_path:
+        project_root = get_project_root()
+        return os.path.join(project_root, "config", csv_path)
+    return csv_path
+
+
 def load_params_from_csv(csv_path: str) -> StrategyConfig:
-    """Carrega parâmetros de CSV (primeira linha)"""
+    """Carrega parâmetros de CSV (primeira linha)
+    
+    Args:
+        csv_path: Path to CSV file. Can be:
+            - Absolute path: /full/path/to/params.csv
+            - Relative path: ../config/params.csv
+            - Filename only: params.csv (looks in config/ folder)
+    """
+    resolved_path = resolve_config_path(csv_path)
     manager = ConfigManager()
-    manager.load_from_csv(csv_path)
+    manager.load_from_csv(resolved_path)
     
     if not manager.configs:
-        raise ValueError(f"No configurations found in {csv_path}")
+        raise ValueError(f"No configurations found in {resolved_path}")
     
     return manager.configs[0]
 
 
 def load_all_params_from_csv(csv_path: str) -> List[StrategyConfig]:
     """Carrega todos os conjuntos de parâmetros de CSV"""
+    resolved_path = resolve_config_path(csv_path)
     manager = ConfigManager()
-    manager.load_from_csv(csv_path)
+    manager.load_from_csv(resolved_path)
     return manager.configs
 
 
 def save_params_to_csv(config: StrategyConfig, csv_path: str):
-    """Salva parâmetros para CSV"""
+    """Salva parâmetros para CSV
+    
+    Args:
+        csv_path: Path to save. If filename only, saves to config/ folder.
+    """
+    resolved_path = resolve_config_path(csv_path)
     df = pd.DataFrame([config.to_dict()])
-    df.to_csv(csv_path, index=False)
+    df.to_csv(resolved_path, index=False)
 
 
 def create_default_ranges() -> Dict[str, ParamRange]:

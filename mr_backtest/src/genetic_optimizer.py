@@ -29,16 +29,16 @@ Usage:
     best_params = optimizer.run()
 """
 
+import os
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Optional, Callable
+from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 import random
 from tqdm import tqdm
-import multiprocessing as mp
 
-from config import StrategyConfig, ParamRange, create_narrow_ranges
+from config import StrategyConfig, ParamRange, create_narrow_ranges, save_params_to_csv
 from mr_backtest import backtest, analyze, load_ohlc_csv
 
 
@@ -103,6 +103,11 @@ class GeneticOptimizer:
         min_trades: int = 5,
         parallel: bool = False
     ):
+        # Resolve data path
+        if not os.path.isabs(csv_data_path):
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            csv_data_path = os.path.join(project_root, "data", csv_data_path)
+        
         self.csv_data_path = csv_data_path
         self.population_size = population_size
         self.generations = generations
@@ -391,7 +396,11 @@ class GeneticOptimizer:
         return sorted_pop[:n]
     
     def save_history(self, csv_path: str):
-        """Salva histórico de evolução"""
+        """Salva histórico de evolução em report/ folder"""
+        if not os.path.isabs(csv_path):
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            csv_path = os.path.join(project_root, "report", csv_path)
+        
         df = pd.DataFrame(self.history)
         df.to_csv(csv_path, index=False)
         print(f"Saved evolution history to: {csv_path}")
@@ -402,7 +411,7 @@ if __name__ == "__main__":
     print("Testing Genetic Optimizer...")
     
     optimizer = GeneticOptimizer(
-        csv_data_path='BTCUSDT_daily.csv',
+        csv_data_path='BTCUSDT_daily.csv',  # Will resolve to data/BTCUSDT_daily.csv
         population_size=20,  # Small for demo
         generations=5,       # Few generations for demo
         objective=OptimizationObjective.MULTI,
@@ -411,9 +420,7 @@ if __name__ == "__main__":
     
     best_config = optimizer.run()
     
-    # Save results
-    optimizer.save_history('optimization_history.csv')
-    
-    from config import save_params_to_csv
-    save_params_to_csv(best_config, 'optimized_params.csv')
-    print("\nSaved optimized parameters to: optimized_params.csv")
+    # Save results to appropriate folders
+    optimizer.save_history('optimization_history.csv')  # Saves to report/
+    save_params_to_csv(best_config, 'optimized_params.csv')  # Saves to config/
+    print("\nOptimization complete!")

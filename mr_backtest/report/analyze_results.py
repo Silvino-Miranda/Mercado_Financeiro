@@ -19,6 +19,7 @@ Usage:
 """
 
 import argparse
+import os
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple
@@ -199,7 +200,12 @@ def robust_configurations(df: pd.DataFrame, pf_threshold: float = 1.5,
 
 def save_filtered_results(df: pd.DataFrame, output_path: str, 
                           pf_min: float = 1.0, trades_min: int = 5) -> None:
-    """Save filtered results to CSV"""
+    """Save filtered results to CSV in data/ folder"""
+    # Resolve path to data/ folder
+    if not os.path.isabs(output_path):
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        output_path = os.path.join(project_root, "data", output_path)
+    
     filtered = df[
         (df['profit_factor'] >= pf_min) &
         (df['trades'] >= trades_min)
@@ -274,7 +280,11 @@ def plot_results(df: pd.DataFrame) -> None:
     ax4.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plot_path = 'grid_results_analysis.png'
+    
+    # Save to report/ folder
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    plot_path = os.path.join(project_root, "report", "grid_results_analysis.png")
+    
     plt.savefig(plot_path, dpi=150, bbox_inches='tight')
     print(f"\n✓ Saved plot to: {plot_path}")
     print("  Opening plot...")
@@ -283,20 +293,27 @@ def plot_results(df: pd.DataFrame) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description='Analyze grid search results')
-    parser.add_argument('--csv', default='grid_results.csv', help='Path to grid_results.csv')
+    parser.add_argument('--csv', default='grid_results.csv', help='Path to grid_results.csv (default: looks in data/)')
     parser.add_argument('--top', type=int, default=10, help='Number of top results to show')
     parser.add_argument('--min-trades', type=int, default=5, help='Minimum trades for filtering')
     parser.add_argument('--variant', help='Filter by specific variant (base, rsi, reclaim)')
     parser.add_argument('--plot', action='store_true', help='Generate visualization plots')
-    parser.add_argument('--save-filtered', help='Save filtered results to CSV')
+    parser.add_argument('--save-filtered', help='Save filtered results to CSV in data/ folder')
     parser.add_argument('--pf-min', type=float, default=1.0, help='Minimum profit factor for filtering')
     args = parser.parse_args()
     
+    # Resolve CSV path
+    csv_path = args.csv
+    if not os.path.isabs(csv_path):
+        # Look in data/ folder if relative path
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        csv_path = os.path.join(project_root, "data", csv_path)
+    
     # Load results
     try:
-        df = load_results(args.csv)
+        df = load_results(csv_path)
     except FileNotFoundError:
-        print(f"❌ Error: File '{args.csv}' not found.")
+        print(f"❌ Error: File '{csv_path}' not found.")
         print("   Make sure the grid search has completed and generated the results file.")
         return
     
