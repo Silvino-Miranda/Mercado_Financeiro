@@ -10,24 +10,28 @@ def main():
     symbol = "BTCUSDT"
     interval = "30m"
 
-    # Carregar os dados do arquivo local BTCUSDT_30m.csv
+    # Carregar os dados do arquivo local com TODOS os indicadores técnicos
     data_loader = DataLoader(
         symbol=symbol, 
         interval=interval,
         use_local_file=True,
-        local_filename="BTCUSDT_30m.csv"
+        local_filename="BTCUSDT_30m_full.csv"
     )
     df = data_loader.load_data()
 
-    # Definir as mesmas features e targets usados no treinamento
+    # Definir features (MESMAS do treinamento)
+    # Nota: RSI_14, MACD, BB, Stoch, OBV têm NaN porque dependem de Volume que não está disponível
     feature_columns = [
         "Open",
         "High",
         "Low",
+        "Close",  # Adicionando Close como feature também
         "SMA_20",
         "EMA_20",
     ]
     target_columns = ["Close", "High", "Low"]
+    
+    print(f"\nUsando {len(feature_columns)} features: {feature_columns}")
 
     # Inicializar o preprocessador com as mesmas configurações do treinamento
     preprocessor = DataPreprocessor(

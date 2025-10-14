@@ -8,7 +8,7 @@ DATA_CONFIG = {
     "symbol": "BTCUSDT",
     "interval": "30m",
     "use_local_file": True,
-    "local_filename": "BTCUSDT_30m.csv",
+    "local_filename": "BTCUSDT_30m_full.csv",  # Base completa com 8 anos de histórico
     "data_dir": "data"
 }
 

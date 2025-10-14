@@ -11,25 +11,38 @@ def main():
     symbol = "BTCUSDT"
     interval = "30m"  # Intervalo de 30 minutos
 
-    # Carregar os dados do arquivo local BTCUSDT_30m.csv com indicadores técnicos
+    # Carregar os dados do arquivo local com TODOS os indicadores técnicos
     data_loader = DataLoader(
         symbol=symbol, 
         interval=interval,
         use_local_file=True,
-        local_filename="BTCUSDT_30m.csv"
+        local_filename="BTCUSDT_30m_full.csv"
     )
     df = data_loader.load_data()
+    
+    print(f"\n{'='*70}")
+    print("BASE DE DADOS COMPLETA - 8 ANOS DE HISTÓRICO")
+    print(f"{'='*70}")
+    print(f"Total de registros: {len(df):,}")
+    print(f"Período: {df['Date'].min()} a {df['Date'].max()}")
+    print(f"Colunas disponíveis: {df.columns.tolist()}")
+    print(f"{'='*70}\n")
 
-    # Definir colunas de features e targets
-    # Nota: Removido OBV, RSI_14, MACD, Stoch, BB porque dependem de Volume ou têm muitos NaN
+    # Definir features disponíveis (apenas as que não dependem de Volume)
+    # Nota: RSI_14, MACD, BB, Stoch, OBV têm NaN porque dependem de Volume que não está disponível
     feature_columns = [
         "Open",
         "High",
         "Low",
+        "Close",  # Adicionando Close como feature também
         "SMA_20",
         "EMA_20",
     ]
     target_columns = ["Close", "High", "Low"]
+    
+    print(f"Features usadas ({len(feature_columns)}): {feature_columns}")
+    print(f"Targets ({len(target_columns)}): {target_columns}")
+    print("Nota: Indicadores que dependem de Volume (RSI, MACD, BB, Stoch, OBV) não estão disponíveis\n")
 
     # Inicializar o preprocessador de dados
     preprocessor = DataPreprocessor(
