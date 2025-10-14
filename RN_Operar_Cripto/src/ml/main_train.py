@@ -1,5 +1,12 @@
 # src/ml/main_train.py
 
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 from src.ml.data.data_loader import DataLoader
 from src.ml.utils.data_preprocessing import DataPreprocessor
 from src.ml.models.lstm_model import LSTMModel

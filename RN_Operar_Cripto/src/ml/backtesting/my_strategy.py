@@ -5,7 +5,7 @@ from datetime import datetime
 class MyStrategy(bt.Strategy):
     params = dict(
         stake_percentage=0.95,  # 95% do capital total
-        profit_target=0.02,  # 2% de lucro para vender
+        profit_target=0.03,  # 3% de lucro para vender (Take Profit)
         stop_loss=0.015,  # 1.5% de perda para stop loss
         hold_periods=48  # Manter por pelo menos 48 períodos (24 horas em velas de 30min)
     )
@@ -53,13 +53,13 @@ class MyStrategy(bt.Strategy):
             price_change = (actual_current - self.buy_price) / self.buy_price
             
             # VENDA apenas se:
-            # 1. Atingiu o alvo de lucro (2%)
+            # 1. Atingiu o alvo de lucro (3%)
             # 2. Atingiu o stop loss (1.5%)
             # 3. Já está há tempo suficiente na posição E modelo prevê queda
             should_sell = False
             
             if price_change >= self.params.profit_target:
-                should_sell = True  # Take profit
+                should_sell = True  # Take profit (3%)
             elif price_change <= -self.params.stop_loss:
                 should_sell = True  # Stop loss
             elif (self.periods_in_position >= self.params.hold_periods and 

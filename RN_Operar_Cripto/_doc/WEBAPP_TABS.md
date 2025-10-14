@@ -37,7 +37,7 @@ Organizar o dashboard em **3 tabs distintas** para melhor navegação e experiê
     - Capital disponível
   
   - 🔴 **VENDA:**
-    - Take Profit: +2%
+    - Take Profit: +3%
     - Stop Loss: -1.5%
     - Holding mínimo: 48 períodos (24h)
     - Sinal de reversão
@@ -45,7 +45,7 @@ Organizar o dashboard em **3 tabs distintas** para melhor navegação e experiê
 - 🛡️ **Gestão de Risco**
   - Capital por trade: 95%
   - Stop Loss: -1.5%
-  - Take Profit: +2.0%
+  - Take Profit: +3.0%
 
 **Visual:**
 - Fundo azul (#3498db) quando selecionada

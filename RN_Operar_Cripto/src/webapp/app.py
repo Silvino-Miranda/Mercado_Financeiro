@@ -142,7 +142,7 @@ def render_tab_content(tab):
                         html.Div([
                             html.H4('🔴 VENDA (Saída)', style={'color': '#e74c3c'}),
                             html.Ul([
-                                html.Li('Take Profit: +2% de lucro'),
+                                html.Li('Take Profit: +3% de lucro'),
                                 html.Li('Stop Loss: -1.5% de prejuízo'),
                                 html.Li('Holding mínimo: 48 períodos (24h)'),
                                 html.Li('Sinal de reversão do modelo'),
@@ -173,7 +173,7 @@ def render_tab_content(tab):
                         
                         html.Div([
                             html.H5('Take Profit:', style={'color': '#27ae60'}),
-                            html.P('+2.0%', style={'fontSize': '18px', 'fontWeight': 'bold', 'color': '#27ae60'}),
+                            html.P('+3.0%', style={'fontSize': '18px', 'fontWeight': 'bold', 'color': '#27ae60'}),
                         ], style={'width': '30%', 'display': 'inline-block', 'textAlign': 'center',
                                  'backgroundColor': '#d5f4e6', 'padding': '15px', 'borderRadius': '8px',
                                  'marginLeft': '3%'}),
