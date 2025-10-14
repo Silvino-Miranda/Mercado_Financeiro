@@ -38,7 +38,8 @@ class LayoutView:
                 Sistema de Trading Automatizado com LSTM Neural Network
                 Intervalo: 30 minutos | Par: BTC/USDT | Teste: {metricas["data_inicial"]} a {metricas["data_final"]}
                 ✅ Retorno de {metricas["retorno_total"]:.2f}% em {metricas["dias"]} dias ({metricas["retorno_anual"]:.2f}% ao ano)
-                🎯 Taxa de Acerto: {metricas["taxa_acerto"]:.1f}% ({metricas["trades_lucro"]} trades lucrativos)
+                🎯 Taxa de Acerto Geral: {metricas["taxa_acerto_geral"]:.1f}% ({metricas["trades_lucro"]} trades lucrativos)
+                📊 Compras: {metricas["taxa_acerto_compra"]:.1f}% | Vendas: {metricas["taxa_acerto_venda"]:.1f}%
             '''
         else:
             texto = 'Sistema de Trading Automatizado com LSTM Neural Network - Carregando dados...'
@@ -92,18 +93,81 @@ class LayoutView:
             
             html.Hr(),
             
-            # Análise de Acurácia
+            # Análise de Acurácia Geral
             html.H4('🎯 Análise de Acurácia dos Trades:', 
                     style={'marginTop': '20px', 'color': '#34495e'}),
             html.Div([
-                html.P(f'✅ Trades Lucrativos: {metricas["trades_lucro"]} ({metricas["taxa_acerto"]:.1f}%)', 
+                html.P(f'✅ Trades Lucrativos: {metricas["trades_lucro"]} ({metricas["taxa_acerto_geral"]:.1f}%)', 
                        style={'color': '#27ae60', 'fontWeight': 'bold', 'fontSize': '18px'}),
-                html.P(f'❌ Trades com Prejuízo: {metricas["trades_prejuizo"]} ({100-metricas["taxa_acerto"]:.1f}%)', 
+                html.P(f'❌ Trades com Prejuízo: {metricas["trades_prejuizo"]} ({100-metricas["taxa_acerto_geral"]:.1f}%)', 
                        style={'color': '#e74c3c', 'fontWeight': 'bold', 'fontSize': '18px'}),
-                html.P(f'📊 Taxa de Acerto: {metricas["taxa_acerto"]:.1f}%', 
+                html.P(f'📊 Taxa de Acerto Geral: {metricas["taxa_acerto_geral"]:.1f}%', 
                        style={'color': '#3498db', 'fontWeight': 'bold', 'fontSize': '22px', 
                               'backgroundColor': '#ecf0f1', 'padding': '10px', 'borderRadius': '5px',
                               'textAlign': 'center', 'marginTop': '10px'}),
+            ]),
+            
+            html.Hr(),
+            
+            # Nova seção: Análise de Acurácia por Operação
+            html.H4('📊 Análise Detalhada: Acertos por Tipo de Operação', 
+                    style={'marginTop': '20px', 'color': '#2c3e50'}),
+            
+            html.Div([
+                # Acertos nas COMPRAS
+                html.Div([
+                    html.H5('🟢 DECISÕES DE COMPRA:', 
+                            style={'color': '#16a085', 'marginBottom': '10px'}),
+                    html.P(f'✅ Compras Acertadas: {metricas["acertos_compra"]}', 
+                           style={'color': '#27ae60', 'fontSize': '16px', 'marginLeft': '20px'}),
+                    html.P(f'   (Comprou e o preço subiu)', 
+                           style={'color': '#7f8c8d', 'fontSize': '14px', 'marginLeft': '20px', 'fontStyle': 'italic'}),
+                    html.P(f'❌ Compras Erradas: {metricas["erros_compra"]}', 
+                           style={'color': '#e74c3c', 'fontSize': '16px', 'marginLeft': '20px'}),
+                    html.P(f'   (Comprou mas o preço caiu)', 
+                           style={'color': '#7f8c8d', 'fontSize': '14px', 'marginLeft': '20px', 'fontStyle': 'italic'}),
+                    html.P(f'🎯 Taxa de Acerto nas Compras: {metricas["taxa_acerto_compra"]:.1f}%', 
+                           style={'color': '#16a085', 'fontWeight': 'bold', 'fontSize': '18px',
+                                  'backgroundColor': '#d5f4e6', 'padding': '8px', 'borderRadius': '5px',
+                                  'marginLeft': '20px', 'marginTop': '10px'}),
+                ], style={'marginBottom': '20px', 'padding': '15px', 
+                         'border': '2px solid #16a085', 'borderRadius': '8px',
+                         'backgroundColor': '#f0fdf7'}),
+                
+                # Acertos nas VENDAS
+                html.Div([
+                    html.H5('🔴 DECISÕES DE VENDA:', 
+                            style={'color': '#c0392b', 'marginBottom': '10px'}),
+                    html.P(f'✅ Vendas Acertadas: {metricas["acertos_venda"]}', 
+                           style={'color': '#27ae60', 'fontSize': '16px', 'marginLeft': '20px'}),
+                    html.P(f'   (Vendeu e o preço caiu depois)', 
+                           style={'color': '#7f8c8d', 'fontSize': '14px', 'marginLeft': '20px', 'fontStyle': 'italic'}),
+                    html.P(f'❌ Vendas Erradas: {metricas["erros_venda"]}', 
+                           style={'color': '#e74c3c', 'fontSize': '16px', 'marginLeft': '20px'}),
+                    html.P(f'   (Vendeu mas o preço continuou subindo)', 
+                           style={'color': '#7f8c8d', 'fontSize': '14px', 'marginLeft': '20px', 'fontStyle': 'italic'}),
+                    html.P(f'🎯 Taxa de Acerto nas Vendas: {metricas["taxa_acerto_venda"]:.1f}%', 
+                           style={'color': '#c0392b', 'fontWeight': 'bold', 'fontSize': '18px',
+                                  'backgroundColor': '#fadbd8', 'padding': '8px', 'borderRadius': '5px',
+                                  'marginLeft': '20px', 'marginTop': '10px'}),
+                ], style={'marginBottom': '20px', 'padding': '15px',
+                         'border': '2px solid #c0392b', 'borderRadius': '8px',
+                         'backgroundColor': '#fef5f4'}),
+                
+                # Conclusão
+                html.Div([
+                    html.H5('🎓 CONCLUSÃO:', 
+                            style={'color': '#8e44ad', 'marginBottom': '10px'}),
+                    html.P(
+                        f"O modelo acertou mais nas {'COMPRAS' if metricas['taxa_acerto_compra'] > metricas['taxa_acerto_venda'] else 'VENDAS'} "
+                        f"({max(metricas['taxa_acerto_compra'], metricas['taxa_acerto_venda']):.1f}% vs "
+                        f"{min(metricas['taxa_acerto_compra'], metricas['taxa_acerto_venda']):.1f}%)",
+                        style={'fontSize': '16px', 'fontWeight': 'bold', 'color': '#2c3e50',
+                               'backgroundColor': '#f4ecf7', 'padding': '10px', 'borderRadius': '5px',
+                               'marginLeft': '20px'}
+                    ),
+                ], style={'padding': '15px', 'border': '2px solid #8e44ad', 
+                         'borderRadius': '8px', 'backgroundColor': '#faf5ff'}),
             ]),
             
             html.Hr(),
