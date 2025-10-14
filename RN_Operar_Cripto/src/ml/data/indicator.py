@@ -46,7 +46,13 @@ class IndicatorCalculator:
         # 5. MOVING AVERAGES
         self._add_moving_averages()
         
-        print(f"✅ {len(self.indicators_added)} indicadores calculados!")
+        print(f"✅ {len(self.indicators_added)} indicadores base calculados!")
+        
+        # 6. FEATURES DERIVADOS (80/20)
+        derived = self.add_derived_features()
+        self.indicators_added.extend(derived)
+        
+        print(f"✅ Total: {len(self.indicators_added)} features!")
         
         return self.df
     
@@ -244,14 +250,15 @@ class IndicatorCalculator:
         """Adiciona médias móveis."""
         print("   📊 Moving averages...")
         
-        # SMAs (apenas 20 e 50 - as mais importantes)
-        for period in [20, 50]:
+        # SMAs (10, 20, 50 - baseado em análise MI)
+        for period in [10, 20, 50]:
             self.df[f'SMA_{period}'] = self.df['Close'].rolling(window=period).mean()
             self.indicators_added.append(f'SMA_{period}')
         
-        # EMAs (apenas 20 - a mais usada)
-        self.df['EMA_20'] = self.df['Close'].ewm(span=20, adjust=False).mean()
-        self.indicators_added.append('EMA_20')
+        # EMAs (9, 20, 50 - baseado em análise MI)
+        for period in [9, 20, 50]:
+            self.df[f'EMA_{period}'] = self.df['Close'].ewm(span=period, adjust=False).mean()
+            self.indicators_added.append(f'EMA_{period}')
     
     def add_advanced_features(self):
         """
@@ -276,11 +283,16 @@ class IndicatorCalculator:
         self.indicators_added.append('DI_Spread')
         print("   ✅ DI_Spread (ADX_Pos - ADX_Neg)")
         
-        # 2. AROON INDICATOR (já existe, mas garantir)
-        if 'Aroon_Ind' not in self.df.columns:
-            self.df['Aroon_Ind'] = self.df['Aroon_Up'] - self.df['Aroon_Down']
-            self.indicators_added.append('Aroon_Ind')
-        print("   ✅ Aroon_Ind")
+        # 2. AROON SPREAD (nome alternativo, mais intuitivo)
+        if 'Aroon_Up' in self.df.columns and 'Aroon_Down' in self.df.columns:
+            self.df['Aroon_Spread'] = self.df['Aroon_Up'] - self.df['Aroon_Down']
+            if 'Aroon_Spread' not in self.indicators_added:
+                self.indicators_added.append('Aroon_Spread')
+            # Manter Aroon_Ind também (mesmo valor, nome diferente)
+            if 'Aroon_Ind' not in self.df.columns:
+                self.df['Aroon_Ind'] = self.df['Aroon_Spread']
+                self.indicators_added.append('Aroon_Ind')
+        print("   ✅ Aroon_Spread / Aroon_Ind")
         
         # 3. DISTÂNCIA RELATIVA À SMA_50
         self.df['Close_SMA50_Dist'] = (self.df['Close'] / self.df['SMA_50']) - 1
@@ -469,3 +481,282 @@ class IndicatorCalculator:
     def get_indicators_list(self):
         """Retorna lista de indicadores adicionados."""
         return self.indicators_added
+    
+    def add_derived_features(self):
+        """
+        Adiciona features DERIVADOS otimizados (80/20 rule).
+        Baseado em análise profissional de quais indicadores realmente importam.
+        
+        FOCO: Força + Direção + Volatilidade + Posição nos Canais
+        """
+        print("\n🎯 Adicionando features DERIVADOS (80/20)...")
+        
+        derived = []
+        
+        # ============================================
+        # 1. FORÇA E DIREÇÃO DE TENDÊNCIA (ADX + DI)
+        # ============================================
+        print("   💪 Força e direção de tendência...")
+        
+        if 'ADX' in self.df.columns and 'ADX_Pos' in self.df.columns and 'ADX_Neg' in self.df.columns:
+            # Spread DI (força DIRECIONAL)
+            self.df['DI_Spread'] = self.df['ADX_Pos'] - self.df['ADX_Neg']
+            derived.append('DI_Spread')
+            
+            # Força total (ADX × direção)
+            self.df['ADX_Direction'] = self.df['ADX'] * (self.df['DI_Spread'] / 100)
+            derived.append('ADX_Direction')
+        
+        # ============================================
+        # 2. DISTÂNCIA E INCLINAÇÃO DE MÉDIAS
+        # ============================================
+        print("   📐 Distância e slope de médias...")
+        
+        if 'SMA_20' in self.df.columns and 'SMA_50' in self.df.columns:
+            # Distância do preço à SMA_50 (tendência lenta)
+            self.df['Price_to_SMA50'] = (self.df['Close'] / self.df['SMA_50']) - 1
+            derived.append('Price_to_SMA50')
+            
+            # Spread entre médias (inclinação relativa)
+            self.df['SMA_Spread'] = (self.df['SMA_20'] - self.df['SMA_50']) / self.df['SMA_50']
+            derived.append('SMA_Spread')
+            
+            # Slope da SMA_20 (últimos 5 períodos)
+            self.df['SMA20_Slope'] = self.df['SMA_20'].diff(5) / self.df['SMA_20'].shift(5)
+            derived.append('SMA20_Slope')
+        
+        # ============================================
+        # 3. POSIÇÃO NOS CANAIS (normalizado 0-1)
+        # ============================================
+        print("   📊 Posição nos canais...")
+        
+        # Bollinger %B (já existe, mas garantir)
+        if 'BB_Pct' in self.df.columns:
+            derived.append('BB_Pct')
+        
+        # Donchian Position
+        if 'Donchian_High' in self.df.columns and 'Donchian_Low' in self.df.columns:
+            donchian_range = self.df['Donchian_High'] - self.df['Donchian_Low']
+            self.df['Donchian_Pos'] = (self.df['Close'] - self.df['Donchian_Low']) / (donchian_range + 1e-10)
+            derived.append('Donchian_Pos')
+        
+        # ============================================
+        # 4. VOLATILIDADE NORMALIZADA
+        # ============================================
+        print("   📉 Volatilidade normalizada...")
+        
+        if 'ATR_14' in self.df.columns:
+            # ATR% (normalizado pelo preço)
+            self.df['ATR_Pct'] = (self.df['ATR_14'] / self.df['Close']) * 100
+            derived.append('ATR_Pct')
+            
+            # Z-score do ATR (regime de volatilidade)
+            atr_mean = self.df['ATR_14'].rolling(window=50).mean()
+            atr_std = self.df['ATR_14'].rolling(window=50).std()
+            self.df['ATR_Zscore'] = (self.df['ATR_14'] - atr_mean) / (atr_std + 1e-10)
+            derived.append('ATR_Zscore')
+        
+        # Bollinger Width normalizado (z-score)
+        if 'BB_Width' in self.df.columns:
+            bb_mean = self.df['BB_Width'].rolling(window=50).mean()
+            bb_std = self.df['BB_Width'].rolling(window=50).std()
+            self.df['BB_Width_Zscore'] = (self.df['BB_Width'] - bb_mean) / (bb_std + 1e-10)
+            derived.append('BB_Width_Zscore')
+        
+        # ============================================
+        # 5. SQUEEZE (Bollinger x Keltner)
+        # ============================================
+        print("   🔒 Squeeze detection...")
+        
+        if 'BB_Width' in self.df.columns and 'Keltner_High' in self.df.columns and 'Keltner_Low' in self.df.columns:
+            # Keltner Width
+            self.df['Keltner_Width'] = self.df['Keltner_High'] - self.df['Keltner_Low']
+            derived.append('Keltner_Width')
+            
+            # Squeeze Flag (1 = squeeze ativo, típico de LATERAL)
+            self.df['Squeeze'] = (self.df['BB_Width'] < self.df['Keltner_Width']).astype(int)
+            derived.append('Squeeze')
+        
+        # ============================================
+        # 6. VOLUME NORMALIZADO (se disponível)
+        # ============================================
+        print("   📊 Volume normalizado...")
+        
+        has_real_volume = self.df['Volume'].sum() > 0
+        if has_real_volume:
+            # Volume SMA
+            self.df['Volume_SMA20'] = self.df['Volume'].rolling(window=20).mean()
+            
+            # Volume normalizado (ratio)
+            self.df['Volume_Ratio'] = self.df['Volume'] / (self.df['Volume_SMA20'] + 1e-10)
+            derived.append('Volume_Ratio')
+            
+            # Volume Z-score
+            vol_mean = self.df['Volume'].rolling(window=50).mean()
+            vol_std = self.df['Volume'].rolling(window=50).std()
+            self.df['Volume_Zscore'] = (self.df['Volume'] - vol_mean) / (vol_std + 1e-10)
+            derived.append('Volume_Zscore')
+        
+        # ============================================
+        # 7. ESTRUTURA DE PREÇO (Higher Highs/Lows)
+        # ============================================
+        print("   🏔️  Estrutura de preço...")
+        
+        # Barras desde última máxima/mínima de N períodos
+        period = 20
+        self.df['Bars_Since_High'] = 0
+        self.df['Bars_Since_Low'] = 0
+        
+        for i in range(period, len(self.df)):
+            window_high = self.df['High'].iloc[i-period:i]
+            window_low = self.df['Low'].iloc[i-period:i]
+            
+            bars_high = i - window_high.idxmax() if len(window_high) > 0 else period
+            bars_low = i - window_low.idxmin() if len(window_low) > 0 else period
+            
+            self.df.loc[self.df.index[i], 'Bars_Since_High'] = bars_high
+            self.df.loc[self.df.index[i], 'Bars_Since_Low'] = bars_low
+        
+        derived.extend(['Bars_Since_High', 'Bars_Since_Low'])
+        
+        # ============================================
+        # 8. MOMENTUM E RETORNOS
+        # ============================================
+        print("   🚀 Momentum e retornos...")
+        
+        # Retornos de diferentes períodos
+        for period in [1, 5, 10, 20]:
+            self.df[f'Return_{period}'] = self.df['Close'].pct_change(period) * 100
+            derived.append(f'Return_{period}')
+        
+        # ============================================
+        # 9. R² DA REGRESSÃO LINEAR (força de tendência)
+        # ============================================
+        print("   📈 R² de tendência...")
+        
+        def calculate_r2(series, window=20):
+            """Calcula R² da regressão linear."""
+            r2_values = []
+            for i in range(len(series)):
+                if i < window:
+                    r2_values.append(0.0)
+                else:
+                    y = series.iloc[i-window:i].values
+                    x = range(window)
+                    
+                    # Regressão linear simples
+                    x_mean = sum(x) / window
+                    y_mean = sum(y) / window
+                    
+                    numerator = sum((x[j] - x_mean) * (y[j] - y_mean) for j in range(window))
+                    denominator_x = sum((x[j] - x_mean)**2 for j in range(window))
+                    denominator_y = sum((y[j] - y_mean)**2 for j in range(window))
+                    
+                    if denominator_x > 0 and denominator_y > 0:
+                        r = numerator / (denominator_x * denominator_y)**0.5
+                        r2_values.append(r**2)
+                    else:
+                        r2_values.append(0.0)
+            
+            return r2_values
+        
+        self.df['Price_R2_20'] = calculate_r2(self.df['Close'], window=20)
+        derived.append('Price_R2_20')
+        
+        # ============================================
+        # RESUMO
+        # ============================================
+        print(f"\n✅ {len(derived)} features derivados adicionados!")
+        
+        self.derived_features = derived
+        return derived
+    
+    def get_top_features_by_mi(self):
+        """
+        Retorna TOP 12 features baseado em análise de Mutual Information.
+        
+        Estes features mostraram maior relevância na prática para
+        classificar ALTA/LATERAL/BAIXA em horizonte de 6-12h.
+        
+        Baseado em análise empírica com 6000+ amostras.
+        """
+        top_12 = [
+            # CANAIS (dominam o ranking MI)
+            'Donchian_Low',
+            'Donchian_High',
+            'BB_Low',
+            'BB_High',
+            'Keltner_Low',
+            'Keltner_High',
+            'BB_Mid',
+            
+            # MÉDIAS (tendência)
+            'EMA_50',
+            'SMA_50',
+            'SMA_20',
+            'EMA_20',
+            'EMA_9',
+            
+            # MOMENTUM (confirmação)
+            'Aroon_Spread',  # ou Aroon_Ind
+            'MACD_Hist'
+        ]
+        
+        # Filtrar apenas os que existem
+        available = [f for f in top_12 if f in self.df.columns]
+        
+        print(f"\n🎯 TOP features (MI-based): {len(available)}/14")
+        return available
+    
+    def get_optimized_features(self):
+        """
+        Retorna lista dos TOP features otimizados (80/20).
+        Use ESTES para treinar o modelo.
+        """
+        optimized = [
+            # OHLC base
+            'Open', 'High', 'Low', 'Close',
+            
+            # Força e Direção (ADX)
+            'ADX', 'DI_Spread', 'ADX_Direction',
+            
+            # Aroon
+            'Aroon_Spread', 'Aroon_Ind',
+            
+            # MACD
+            'MACD', 'MACD_Hist',
+            
+            # Distância e Slope de Médias
+            'Price_to_SMA50', 'SMA_Spread', 'SMA20_Slope',
+            
+            # Posição nos Canais
+            'BB_Pct', 'Donchian_Pos',
+            
+            # Volatilidade
+            'BB_Width_Zscore', 'ATR_Pct', 'ATR_Zscore',
+            
+            # Squeeze
+            'Squeeze', 'Keltner_Width',
+            
+            # Momentum
+            'ROC_10', 'Return_1', 'Return_5', 'Return_10',
+            
+            # Volume (se disponível)
+            'Volume_Ratio', 'Volume_Zscore',
+            
+            # Volume indicators (se disponível)
+            'OBV', 'CMF',
+            
+            # Estrutura
+            'Bars_Since_High', 'Bars_Since_Low',
+            
+            # Força de tendência
+            'Price_R2_20'
+        ]
+        
+        # Filtrar apenas os que existem no DataFrame
+        available = [f for f in optimized if f in self.df.columns]
+        
+        print(f"\n📊 Features otimizados disponíveis: {len(available)}/{len(optimized)}")
+        
+        return available
