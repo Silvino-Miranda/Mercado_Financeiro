@@ -70,13 +70,22 @@ def main():
     lstm_model = LSTMModel(input_shape=input_shape, output_size=output_size)
 
     # Treinar o modelo com os dados de treinamento e validação
+    print("\n" + "="*70)
+    print("INICIANDO TREINAMENTO COM CONFIGURAÇÃO OTIMIZADA")
+    print("="*70)
+    print(f"Epochs: 50 (aumento de 10 para 50)")
+    print(f"Batch size: 32 (redução de 64 para 32 para melhor convergência)")
+    print(f"Early stopping: Ativado (paciência de 10 epochs)")
+    print(f"Learning rate: Padrão (0.001 com Adam optimizer)")
+    print("="*70 + "\n")
+    
     history = lstm_model.train(
         X_train,
         Y_train,
         X_val=X_val,
         Y_val=Y_val,
-        epochs=10,  # Ajuste o número de épocas conforme necessário
-        batch_size=64,  # Ajuste o tamanho do lote conforme necessário
+        epochs=50,  # Aumentado de 10 para 50 epochs
+        batch_size=32,  # Reduzido de 64 para 32 para melhor convergência
     )
 
     # Salvar o histórico de treinamento para uso futuro

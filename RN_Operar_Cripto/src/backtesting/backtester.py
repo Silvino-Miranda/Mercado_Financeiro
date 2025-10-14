@@ -54,6 +54,10 @@ class Backtester:
             if col not in dataframe.columns:
                 raise ValueError(f"A coluna '{col}' está faltando no DataFrame.")
 
+        # Converter a coluna 'datetime' para datetime se necessário
+        if dataframe['datetime'].dtype == 'object':
+            dataframe['datetime'] = pd.to_datetime(dataframe['datetime'])
+        
         # Converter a coluna 'datetime' para o índice
         dataframe = dataframe.set_index("datetime")
 

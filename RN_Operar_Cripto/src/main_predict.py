@@ -74,6 +74,10 @@ def main():
     data_bt = df.iloc[60:60+len(Y)].copy()  # Pular as primeiras 60 linhas (sequence_length)
     data_bt.reset_index(drop=True, inplace=True)
     
+    # Selecionar apenas as colunas necessárias (remove colunas com NaN)
+    columns_needed = ['Date', 'Open', 'High', 'Low', 'Close', 'SMA_20', 'EMA_20']
+    data_bt = data_bt[columns_needed].copy()
+    
     # Renomear e preparar colunas para o backtester
     data_bt.rename(columns={
         'Date': 'datetime',
@@ -83,25 +87,31 @@ def main():
         'Close': 'close'
     }, inplace=True)
     
-    # Adicionar coluna de volume (se não existir, criar com valor padrão)
-    if 'volume' not in data_bt.columns:
-        data_bt['volume'] = 1.0
+    # Adicionar coluna de volume (padrão = 1.0)
+    data_bt['volume'] = 1.0
 
     # Adicionar as previsões ao DataFrame (Close previsto)
     data_bt["prediction"] = Y_pred_close
     data_bt["actual"] = Y_actual_close
     
+    print(f"\nDataFrame preparado: {len(data_bt)} linhas")
     print("\nAmostra dos dados com previsões:")
     print(data_bt[["close", "actual", "prediction"]].head(10))
 
     # Verificar se há valores NaN e remover se necessário
+    initial_rows = len(data_bt)
     data_bt.dropna(inplace=True)
+    if len(data_bt) < initial_rows:
+        print(f"Aviso: {initial_rows - len(data_bt)} linhas removidas por conter NaN")
 
     # Imprimir as primeiras linhas do DataFrame
     data_bt.head(10)
 
-    # Backtesting
-    backtester = Backtester(initial_capital=10000)
+    # Backtesting com capital ajustado para o preço do BTC
+    initial_capital = 100000  # $100k para comprar pelo menos 1 BTC
+    print(f"\nIniciando backtesting com capital inicial de ${initial_capital:,.2f}")
+    
+    backtester = Backtester(initial_capital=initial_capital)
     backtester.add_data(data_bt)
     backtester.run()
     

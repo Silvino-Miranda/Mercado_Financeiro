@@ -20,23 +20,11 @@ class MyStrategy(bt.Strategy):
         self.periods_in_position = 0
 
     def next(self):
-        # Debug: imprimir apenas nos primeiros 5 períodos
-        if len(self) <= 5:
-            print(f"Período {len(self)}: Cash=${self.broker.getcash():.2f}, "
-                  f"Value=${self.broker.getvalue():.2f}, "
-                  f"Close={self.dataclose[0]:.2f}, "
-                  f"Position={self.position.size if self.position else 0}")
-        
         # Calcular tamanho da posição
         cash = self.broker.getcash()
         size = int((cash * self.params.stake_percentage) / self.dataclose[0])
         
-        if len(self) <= 5:
-            print(f"  -> Size calculado: {size}")
-        
         if size < 1 and not self.position:
-            if len(self) <= 5:
-                print(f"  -> Pulando: size < 1")
             return  # Não operar se não há dinheiro suficiente
 
         # Valores atuais
@@ -46,12 +34,13 @@ class MyStrategy(bt.Strategy):
         if not self.position:
             # COMPRA SEMPRE que não tem posição e tem dinheiro
             # (estratégia buy and hold com saídas táticas)
-            if len(self) <= 5:
-                print(f"  -> COMPRANDO {size} unidades a ${self.dataclose[0]:.2f}")
-            self.buy_price = actual_current
-            self.periods_in_position = 0
             self.order = self.buy(size=size)
+            # Nota: buy_price será definido no notify_order quando a ordem for executada
         else:
+            # Só processa lógica de venda se já temos buy_price definido
+            if self.buy_price is None:
+                return
+                
             self.periods_in_position += 1
             
             # Calcular variação de preço desde a compra
@@ -82,9 +71,15 @@ class MyStrategy(bt.Strategy):
             pred_value = self.prediction[0]
             actual_value = self.actual[0]
 
-            # Determinar se é entrada ou saída
-            status = "Entrada"
-            if self.position.size != 0:
+            # Se é compra, salvar o preço de entrada
+            if order.isbuy():
+                self.buy_price = order.executed.price
+                self.periods_in_position = 0
+                status = "Entrada"
+            else:
+                # Se é venda, resetar
+                self.buy_price = None
+                self.periods_in_position = 0
                 status = "Saida"
 
             trade_data = {
