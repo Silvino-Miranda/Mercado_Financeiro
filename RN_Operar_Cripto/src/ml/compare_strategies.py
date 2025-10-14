@@ -54,15 +54,14 @@ def run_strategy(strategy, df_test, model):
     initial_capital = 100000.0
     backtester = Backtester(initial_capital=initial_capital)
     backtester.add_data(df_bt)
-    backtester.add_strategy(strategy_class)
-    final_capital = backtester.run()
+    final_capital = backtester.run(strategy_class=strategy_class)
     
     # Salvar histórico com nome da estratégia
     output_file = Path("src/ml/outputs") / f"capital_history-{strategy.name.replace(' ', '_')}.csv"
     backtester.save_capital_history(str(output_file))
     
     # Coletar estatísticas
-    history = backtester.get_trade_history()
+    history = backtester.trade_history
     
     if history:
         trades_df = pd.DataFrame(history)

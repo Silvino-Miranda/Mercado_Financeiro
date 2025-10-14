@@ -70,14 +70,21 @@ class Backtester:
         data = CustomPandasData(dataname=dataframe)
         self.cerebro.adddata(data)
 
-    def run(self):
+    def run(self, strategy_class=None):
         # Executa o backtest
-        self.cerebro.addstrategy(MyStrategy)
+        # Se nenhuma estratégia for fornecida, usa MyStrategy padrão
+        if strategy_class is None:
+            strategy_class = MyStrategy
+        
+        self.cerebro.addstrategy(strategy_class)
         strategies = self.cerebro.run()
         self.strategy = strategies[0]  # Captura a instância da estratégia
         print("Capital final: %.2f" % self.cerebro.broker.getvalue())
         # Obter o histórico de trades da estratégia
         self.trade_history = self.strategy.trade_history
+        
+        # Retornar o capital final
+        return self.cerebro.broker.getvalue()
 
     def plot(self):
         # Gera gráfico com o desempenho
