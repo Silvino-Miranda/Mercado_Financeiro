@@ -76,12 +76,13 @@ def main():
     
     print(f"\nTotal de sequências para previsão: {len(X)}")
     
-    # Carregar o modelo salvo
-    print("Carregando modelo treinado...")
+    # Carregar o modelo salvo da pasta checkpoints
+    model_path = "src/ml/checkpoints/lstm_model.keras"
+    print(f"Carregando modelo treinado de: {model_path}")
     lstm_model = LSTMModel(
         input_shape=(X.shape[1], X.shape[2]),
         output_size=3,  # Close, High, Low
-        model_path="lstm_model.keras"
+        model_path=model_path
     )
 
     # Fazer previsões usando o modelo carregado
@@ -149,9 +150,12 @@ def main():
     backtester.add_data(data_bt)
     backtester.run()
     
-    # Salvar o histórico do backtest
-    backtester.save_capital_history(f"capital_history-{symbol}.csv")
-    print(f"\nHistórico de capital salvo em: capital_history-{symbol}.csv")
+    # Salvar o histórico do backtest na pasta outputs
+    import os
+    os.makedirs("src/ml/outputs", exist_ok=True)
+    output_path = f"src/ml/outputs/capital_history-{symbol}.csv"
+    backtester.save_capital_history(output_path)
+    print(f"\n✅ Histórico de capital salvo em: {output_path}")
     
     # Note: backtester.plot() is disabled due to backtrader plotting issues
     # Use the Dash app (src/app.py) to visualize results instead

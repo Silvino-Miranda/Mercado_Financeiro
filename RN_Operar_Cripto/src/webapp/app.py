@@ -15,8 +15,8 @@ from dash import dcc, html
 from src.webapp.controllers.dashboard_controller import DashboardController
 
 
-# Configurações
-CSV_PATH = 'capital_history-BTCUSDT.csv'
+# Configurações - Caminho atualizado para outputs
+CSV_PATH = 'src/ml/outputs/capital_history-BTCUSDT.csv'
 
 # Inicializar Controller
 controller = DashboardController(CSV_PATH)

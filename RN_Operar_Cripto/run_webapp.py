@@ -10,7 +10,7 @@ root_dir = Path(__file__).parent
 sys.path.insert(0, str(root_dir))
 
 # Importar e executar o app
-from webapp.app import app
+from src.webapp.app import app
 
 if __name__ == '__main__':
     print("\n" + "="*70)

@@ -34,16 +34,20 @@ class LSTMModel:
         Y_val=None,
         epochs=500,
         batch_size=32,
-        model_save_path="lstm_model.keras",
+        model_save_path="src/ml/checkpoints/lstm_model.keras",
     ):
         print("Iniciando o treinamento do modelo...")
+        
+        # Criar pasta de checkpoints se não existir
+        import os
+        os.makedirs("src/ml/checkpoints", exist_ok=True)
 
         # Callbacks para EarlyStopping e ModelCheckpoint
         early_stopping = EarlyStopping(
             monitor="val_loss", patience=10, restore_best_weights=True, verbose=1
         )
         checkpoint = ModelCheckpoint(
-            filepath="model_weights_epoch_{epoch:02d}.weights.h5",
+            filepath="src/ml/checkpoints/model_weights_epoch_{epoch:02d}.weights.h5",
             save_weights_only=True,
             monitor="val_loss",
             mode="min",

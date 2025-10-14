@@ -90,6 +90,12 @@ Este diretório contém toda a documentação técnica do projeto de Trading Aut
     - 📊 Gestão de checkpoints
     - 🎯 Recuperação de treinamento
 
+12. **[LIMPEZA_FINAL.md](LIMPEZA_FINAL.md)** ⭐ NOVO
+    - 🧹 Organização da raiz do projeto
+    - 📁 Criação de checkpoints/ e outputs/
+    - 🔧 Refatoração de caminhos
+    - ⚙️ Configuração centralizada
+
 ---
 
 ## 🎓 Como Usar Esta Documentação

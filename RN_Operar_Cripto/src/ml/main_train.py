@@ -102,16 +102,24 @@ def main():
     )
 
     # Salvar o histórico de treinamento para uso futuro
-    print("Histórico de treinamento:")
+    print("\n" + "="*70)
+    print("HISTÓRICO DE TREINAMENTO")
+    print("="*70)
     print(history.history)
+    print("="*70 + "\n")
 
-    # (Opcional) Plotar o histórico de treinamento (perda ao longo das épocas)
-    # Você precisará implementar o método 'plot_training_history' na classe LSTMModel
-    # lstm_model.plot_training_history(history)
-
-    # Salvar o modelo treinado para uso futuro
-    lstm_model.model.save("lstm_model.keras")
-    print("Modelo treinado e salvo como 'lstm_model.keras'.")
+    # Salvar o modelo treinado na pasta checkpoints
+    import os
+    os.makedirs("src/ml/checkpoints", exist_ok=True)
+    model_path = "src/ml/checkpoints/lstm_model.keras"
+    lstm_model.model.save(model_path)
+    
+    print("\n" + "="*70)
+    print("✅ MODELO SALVO COM SUCESSO")
+    print("="*70)
+    print(f"📁 Local: {model_path}")
+    print(f"📊 Checkpoints: src/ml/checkpoints/model_weights_epoch_*.h5")
+    print("="*70 + "\n")
 
 
 if __name__ == "__main__":
