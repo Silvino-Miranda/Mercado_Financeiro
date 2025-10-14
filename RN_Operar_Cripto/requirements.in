@@ -65,3 +65,5 @@ wheel
 wrapt
 yfinance
 ta
+dash
+plotly
