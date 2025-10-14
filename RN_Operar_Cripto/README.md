@@ -1,11 +1,19 @@
-# Sistema de Trading com Rede Neural LSTM
+# 🚀 Sistema de Trading com Rede Neural LSTM
 
 ## 🧠 Descrição
-Sistema avançado de trading automatizado utilizando Redes Neurais LSTM (Long Short-Term Memory) para previsão de preços de criptomoedas. Combina machine learning, análise técnica e backtesting para operações automatizadas.
+Sistema avançado de trading automatizado utilizando Redes Neurais LSTM (Long Short-Term Memory) para previsão de preços de criptomoedas. Combina machine learning, análise técnica e backtesting para operações automatizadas com interface web interativa.
 
 ## 🎯 Objetivo
-Desenvolver um sistema de trading inteligente que utiliza deep learning para prever movimentos de preços e executar operações automatizadas com base em padrões identificados em dados históricos.
-- `main.py`: Script principal para rodar o projeto.
+Desenvolver um sistema de trading inteligente que utiliza deep learning para prever movimentos de preços e executar operações automatizadas com base em padrões identificados em dados históricos de 8 anos.
+
+## 📚 Documentação Completa
+> **Toda a documentação técnica está organizada em [`_doc/`](_doc/README.md)**
+> - 📖 Guias de uso e instalação
+> - 🏗️ Arquitetura e estrutura
+> - 📊 Análises e relatórios
+> - 🔧 Melhorias e atualizações
+
+[**📚 Ver Índice Completo da Documentação →**](_doc/README.md)
 ## 🛠️ Funcionalidades
 
 ### Machine Learning
@@ -47,32 +55,57 @@ Sistema de previsão de preços de criptomoedas usando Redes Neurais LSTM (Long 
 - Evitar o problema de gradientes desvanecentes
 - Ideal para previsão de preços financeiros
 
-## 📁 Estrutura do Projeto
+## 📁 Estrutura do Projeto (Nova Organização)
 
 ```
 RN_Operar_Cripto/
-├── data/
-│   └── BTCUSDT_30m.csv          # Série temporal principal
-├── src/
-│   ├── data/
-│   │   ├── data_loader.py       # Carregamento de dados
-│   │   ├── indicator.py         # Indicadores técnicos
-│   │   └── data_save.py         # Salvamento de dados
-│   ├── models/
-│   │   └── lstm_model.py        # Modelo LSTM
-│   ├── utils/
-│   │   └── data_preprocessing.py # Pré-processamento
-│   ├── backtesting/
-│   │   ├── backtester.py        # Sistema de backtesting
-│   │   └── my_strategy.py       # Estratégia de trading
-│   ├── main_train.py            # Script de treinamento
-│   ├── main_predict.py          # Script de previsão
-│   └── app.py                   # Dashboard web (Dash)
-├── config.py                    # Configurações centralizadas
-├── prepare_data.py              # Preparação dos dados
-├── requirements.txt             # Dependências Python
-└── README.md                    # Este arquivo
+│
+├── _doc/                        # 📚 Documentação completa
+│   ├── README.md               # Índice da documentação
+│   ├── ESTRUTURA_PROJETO.md    # Arquitetura detalhada
+│   ├── REORGANIZACAO_COMPLETA.md
+│   ├── WEBAPP_MVC.md           # Documentação do webapp
+│   ├── CORRECTED_RESULTS.md    # Correção de data leakage
+│   └── ... (outros docs)
+│
+├── src/                        # 💻 Código fonte
+│   ├── ml/                     # 🧠 Machine Learning
+│   │   ├── models/
+│   │   │   └── lstm_model.py   # Modelo LSTM
+│   │   ├── data/
+│   │   │   ├── data_loader.py  # Carregamento de dados
+│   │   │   ├── indicator.py    # Indicadores técnicos
+│   │   │   └── data_save.py
+│   │   ├── backtesting/
+│   │   │   ├── backtester.py   # Sistema de backtesting
+│   │   │   └── my_strategy.py  # Estratégia de trading
+│   │   ├── utils/
+│   │   │   └── data_preprocessing.py
+│   │   ├── main_train.py       # 🔥 Script de treinamento
+│   │   └── main_predict.py     # 🔮 Script de predição
+│   │
+│   └── webapp/                 # 🌐 Interface Web (MVC)
+│       ├── models/
+│       │   └── trading_data_model.py
+│       ├── views/
+│       │   ├── chart_view.py   # Gráficos Plotly
+│       │   └── layout_view.py  # Layout HTML
+│       ├── controllers/
+│       │   └── dashboard_controller.py
+│       └── app.py              # Aplicação Dash
+│
+├── data/                       # 📊 Datasets
+│   ├── BTCUSDT_30m.csv        # Dataset 2 anos
+│   └── BTCUSDT_30m_full.csv   # Dataset 8 anos (142k registros)
+│
+├── run_webapp.py              # 🚀 Launcher do dashboard
+├── config.py                  # ⚙️ Configurações
+├── prepare_data.py            # 🔧 Preparação de dados
+├── requirements.txt           # 📦 Dependências
+└── README.md                  # Este arquivo
 ```
+
+> 💡 **Veja detalhes completos em:** [📁 ESTRUTURA_PROJETO.md](_doc/ESTRUTURA_PROJETO.md)
 
 ## 🎯 Features (Indicadores Técnicos)
 
@@ -112,11 +145,11 @@ Este script irá:
 ### 1. Treinar o Modelo
 
 ```bash
-python src/main_train.py
+.venv\Scripts\python.exe src\ml\main_train.py
 ```
 
 Isso irá:
-- Carregar os dados de `data/BTCUSDT_30m.csv`
+- Carregar os dados de `data/BTCUSDT_30m_full.csv` (8 anos, 142k registros)
 - Pré-processar e normalizar os dados
 - Criar sequências temporais (60 períodos)
 - Treinar o modelo LSTM
@@ -124,36 +157,61 @@ Isso irá:
 
 **Parâmetros de treinamento:**
 - Sequência: 60 períodos (30 horas)
-- Épocas: 10
-- Batch size: 64
+- Épocas: 50 (com early stopping)
+- Batch size: 32
 - Divisão: 70% treino, 15% validação, 15% teste
 
-### 2. Fazer Previsões
+### 2. Fazer Previsões e Backtesting
 
 ```bash
-python src/main_predict.py
+.venv\Scripts\python.exe src\ml\main_predict.py
 ```
 
 Isso irá:
 - Carregar o modelo treinado
-- Fazer previsões para todos os dados
+- Fazer previsões apenas nos dados de teste (15% - dados não vistos)
 - Executar backtesting da estratégia
 - Gerar arquivo `capital_history-BTCUSDT.csv`
-- Plotar gráficos de previsão
+- Exibir métricas de performance
 
-### 3. Visualizar Dashboard
+### 3. Visualizar Dashboard Web
 
 ```bash
-python src/app.py
+.venv\Scripts\python.exe run_webapp.py
 ```
 
-Acesse: http://localhost:8050
+Abre dashboard interativo em: **http://127.0.0.1:8050/**
 
-O dashboard mostra:
-- Comparação visual: Previsões vs Valores Reais
-- Gráficos interativos (Plotly)
-- Histórico de capital
-- Performance da estratégia
+Dashboard inclui:
+- 📊 Evolução do capital
+- 📈 Previsões vs Valores reais
+- 🎯 Análise de trades
+- 📊 Taxa de acerto por operação (Compras vs Vendas)
+- 💰 Métricas de performance dinâmicas
+
+## 📊 Resultados Atuais
+
+### 🎯 Performance do Modelo (Dataset 8 anos)
+
+| Métrica | Valor |
+|---------|-------|
+| **Taxa de Acerto Geral** | 54.3% |
+| **Taxa de Acerto (Compras)** | 54.3% |
+| **Taxa de Acerto (Vendas)** | 59.1% ⭐ |
+| **Retorno Total** | 26.21% |
+| **Retorno Anualizado** | 126.47% |
+| **Trades Lucrativos** | 63 (54.3%) |
+| **Trades com Prejuízo** | 53 (45.7%) |
+| **Total de Operações** | 232 trades |
+| **Período de Teste** | 104 dias |
+
+### 🏆 Insights
+- ✅ **Modelo melhor em VENDAS:** 59.1% vs 54.3% nas compras
+- ✅ **Timing de saída superior** ao timing de entrada
+- ✅ **Data leakage corrigido:** Testes apenas em dados não vistos (15%)
+- ✅ **Estratégia baseada em percentuais** (0.5% threshold)
+
+> 📖 **Ver análise completa:** [CORRECTED_RESULTS.md](_doc/CORRECTED_RESULTS.md)
 
 ## 📊 Módulos Principais
 
