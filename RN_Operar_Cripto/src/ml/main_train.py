@@ -1,8 +1,8 @@
-# src/main_train.py
+# src/ml/main_train.py
 
-from data.data_loader import DataLoader
-from utils.data_preprocessing import DataPreprocessor
-from models.lstm_model import LSTMModel
+from src.ml.data.data_loader import DataLoader
+from src.ml.utils.data_preprocessing import DataPreprocessor
+from src.ml.models.lstm_model import LSTMModel
 import pandas as pd
 
 

@@ -4,9 +4,9 @@ Responsável por orquestrar Model e View, controlando o fluxo da aplicação
 """
 from typing import Dict, Tuple, Optional
 import pandas as pd
-from webapp.models.trading_data_model import TradingDataModel
-from webapp.views.chart_view import ChartView
-from webapp.views.layout_view import LayoutView
+from src.webapp.models.trading_data_model import TradingDataModel
+from src.webapp.views.chart_view import ChartView
+from src.webapp.views.layout_view import LayoutView
 
 
 class DashboardController:

@@ -3,7 +3,7 @@ import backtrader as bt
 import pandas as pd
 import locale
 
-from backtesting.my_strategy import MyStrategy
+from src.ml.backtesting.my_strategy import MyStrategy
 
 
 class CustomPandasData(bt.feeds.PandasData):

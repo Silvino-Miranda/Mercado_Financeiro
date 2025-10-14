@@ -12,7 +12,7 @@ if str(root_dir) not in sys.path:
 
 import dash
 from dash import dcc, html
-from webapp.controllers.dashboard_controller import DashboardController
+from src.webapp.controllers.dashboard_controller import DashboardController
 
 
 # Configurações

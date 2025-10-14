@@ -1,7 +1,7 @@
-from data.data_loader import DataLoader
-from utils.data_preprocessing import DataPreprocessor
-from models.lstm_model import LSTMModel
-from backtesting.backtester import Backtester
+from src.ml.data.data_loader import DataLoader
+from src.ml.utils.data_preprocessing import DataPreprocessor
+from src.ml.models.lstm_model import LSTMModel
+from src.ml.backtesting.backtester import Backtester
 import pandas as pd
 
 
