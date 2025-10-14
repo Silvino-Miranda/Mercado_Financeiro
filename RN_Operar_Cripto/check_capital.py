@@ -1,6 +1,6 @@
 import pandas as pd
 
-df = pd.read_csv('capital_history-BTCUSDT.csv', sep=';')
+df = pd.read_csv('src/ml/outputs/capital_history-BTCUSDT.csv', sep=';')
 
 print('='*70)
 print('ANÁLISE DO CAPITAL_HISTORY-BTCUSDT.csv')
