@@ -221,12 +221,21 @@ def main():
             save_best_only=True,
             mode='max',  # 🔴 Maximizar
             verbose=1
+        ),
+        
+        # Model Checkpoint - salva TODOS os epochs (não apenas o melhor)
+        ModelCheckpoint(
+            filepath='src/ml/checkpoints/classification_epoch_{epoch:02d}_acc_{val_accuracy:.4f}.keras',
+            save_best_only=False,  # 🔴 Salva TODOS
+            save_freq='epoch',  # A cada epoch
+            verbose=1
         )
     ]
     
     print("✓ EarlyStopping (monitor=val_accuracy, patience=20)")
     print("✓ ReduceLROnPlateau (factor=0.5, patience=5)")
-    print("✓ ModelCheckpoint (salva melhor modelo)")
+    print("✓ ModelCheckpoint #1 (salva MELHOR modelo)")
+    print("✓ ModelCheckpoint #2 (salva TODOS os epochs)")
     
     # 6. TREINAR MODELO
     print("\n" + "=" * 70)
@@ -240,7 +249,7 @@ def main():
     history = model.fit(
         X_train, y_train,
         validation_data=(X_val, y_val),
-        epochs=100,
+        epochs=30,  # Reduzido para teste rápido (early stopping em 20)
         batch_size=64,
         callbacks=callbacks,
         verbose=1
