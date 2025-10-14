@@ -3,15 +3,29 @@
 ## ✅ Status: IMPLEMENTADO E FUNCIONANDO
 
 **Data:** 14 de Outubro de 2025  
-**Melhoria:** Organização do conteúdo em tabs navegáveis
+**Melhoria:** Organização do conteúdo em tabs navegáveis  
+**Estratégia Ativa:** 🏆 **Agressiva TP 3% (VENCEDORA)** - +27.90% de retorno!
 
 ---
 
-## 🎯 OBJETIVO
+## � ESTRATÉGIA VENCEDORA
+
+Após testar **6 estratégias diferentes**, a vencedora foi:
+
+**🥇 Agressiva TP 3%**
+- Capital Final: $127,904.31
+- Retorno: +27.90% em 104 dias
+- Retorno Anualizado: +137.35%
+- Take Profit: 3.0%
+- Stop Loss: 1.5%
+
+---
+
+## �🎯 OBJETIVO
 
 Organizar o dashboard em **3 tabs distintas** para melhor navegação e experiência do usuário:
 
-1. 📊 **Estratégia** - Descrição da estratégia de trading
+1. 📊 **Estratégia** - Descrição da estratégia vencedora de trading
 2. 💰 **Resultados** - Métricas e performance
 3. 📈 **Gráficos** - Visualizações e análises
 

@@ -109,7 +109,11 @@ def render_tab_content(tab):
             html.Div([
                 # Descrição da Estratégia
                 html.Div([
-                    html.H3('🎯 Descrição da Estratégia'),
+                    html.H3('🎯 Estratégia Vencedora: Agressiva TP 3% 🏆'),
+                    html.Div([
+                        html.P('🥇 Campeã entre 6 estratégias testadas com +27.90% de retorno!', 
+                               style={'fontSize': '18px', 'fontWeight': 'bold', 'color': '#27ae60', 'marginBottom': '15px'}),
+                    ]),
                     html.P([
                         html.Strong('Tipo: '), 'Trading Algorítmico com LSTM Neural Network',
                         html.Br(),
@@ -120,6 +124,8 @@ def render_tab_content(tab):
                         html.Strong('Targets: '), 'Close, High, Low',
                         html.Br(),
                         html.Strong('Período de Análise: '), '60 períodos (30 horas)',
+                        html.Br(),
+                        html.Strong('Performance: '), 'Retorno de 27.90% em 104 dias (137.35% anualizado)',
                     ], style={'fontSize': '16px', 'lineHeight': '2'}),
                 ], style={'backgroundColor': '#ecf0f1', 'padding': '20px', 
                          'borderRadius': '10px', 'marginBottom': '20px'}),
