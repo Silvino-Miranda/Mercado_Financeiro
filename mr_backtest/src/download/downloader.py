@@ -95,6 +95,7 @@ class DataDownloader:
         candles = self._fetch_all_candles(symbol, interval, start_ts, end_ts, limit)
         
         # Convert to DataFrame
+        print("\n📊 Converting candles to DataFrame...")
         df = self._candles_to_dataframe(candles)
         
         print(f"\n✅ Downloaded {len(df):,} candles")
@@ -102,7 +103,9 @@ class DataDownloader:
         
         # Save if output path provided
         if output_path:
+            print(f"💾 Saving to: {output_path}")
             self._save_csv(df, output_path)
+            print(f"✅ File saved successfully!")
         
         return df
     
@@ -114,12 +117,20 @@ class DataDownloader:
         end_ts: Optional[int],
         limit: int
     ) -> List[List]:
-        """Fetch all candles in date range (handles pagination)."""
+        """
+        Fetch all candles in date range (handles pagination with retry).
+        
+        Features:
+        - Automatic retry on network errors
+        - Progress display with percentage
+        - Estimated total calculation
+        """
         all_candles = []
         current_start = start_ts
+        batch_count = 0
         
         while True:
-            # Fetch batch
+            # Fetch batch with retry
             candles = self._fetch_klines_batch(
                 symbol, interval, current_start, end_ts, limit
             )
@@ -128,7 +139,15 @@ class DataDownloader:
                 break
             
             all_candles.extend(candles)
-            print(f"\r   Fetched {len(all_candles):,} candles...", end='', flush=True)
+            batch_count += 1
+            
+            # Calculate progress
+            if start_ts and end_ts and all_candles:
+                current_time = int(candles[-1][0])
+                progress = ((current_time - start_ts) / (end_ts - start_ts)) * 100
+                print(f"\r   Fetched {len(all_candles):,} candles... ({progress:.1f}% complete)", end='', flush=True)
+            else:
+                print(f"\r   Fetched {len(all_candles):,} candles...", end='', flush=True)
             
             # Check if we got less than limit (last batch)
             if len(candles) < limit:
@@ -138,8 +157,8 @@ class DataDownloader:
             last_candle_time = int(candles[-1][0])
             current_start = last_candle_time + 1
             
-            # Be gentle with API
-            time.sleep(0.2)
+            # Be gentle with API (rate limiting)
+            time.sleep(0.25)
         
         print()  # New line after progress
         return all_candles
@@ -150,9 +169,17 @@ class DataDownloader:
         interval: str,
         start_ts: Optional[int],
         end_ts: Optional[int],
-        limit: int
+        limit: int,
+        max_retries: int = 5
     ) -> List[List]:
-        """Fetch a single batch of klines from Binance API."""
+        """
+        Fetch a single batch of klines from Binance API with automatic retry.
+        
+        Implements exponential backoff retry logic:
+        - Retry on network errors, timeouts, SSL errors
+        - Wait time increases: 1s, 2s, 4s, 8s, 16s
+        - Max 5 retries by default
+        """
         params = {
             'symbol': symbol,
             'interval': interval,
@@ -164,27 +191,52 @@ class DataDownloader:
         if end_ts is not None:
             params['endTime'] = end_ts
         
-        try:
-            response = requests.get(self.BINANCE_KLINES_URL, params=params, timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            raise RuntimeError(f"Failed to fetch data from Binance: {e}")
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(self.BINANCE_KLINES_URL, params=params, timeout=30)
+                response.raise_for_status()
+                return response.json()
+            except (requests.RequestException, ConnectionError, TimeoutError) as e:
+                last_error = e
+                
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 1s, 2s, 4s, 8s, 16s
+                    wait_time = 2 ** attempt
+                    print(f"\n⚠️  Connection error, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                else:
+                    # Last attempt failed
+                    print(f"\n❌ All {max_retries} retry attempts failed")
+        
+        raise RuntimeError(f"Failed to fetch data from Binance after {max_retries} attempts: {last_error}")
     
     def _candles_to_dataframe(self, candles: List[List]) -> pd.DataFrame:
         """Convert raw candles to DataFrame."""
-        data = []
-        for candle in candles:
-            open_time = int(candle[0])
-            data.append({
-                'Date': self._ms_to_date(open_time),
-                'Open': float(candle[1]),
-                'High': float(candle[2]),
-                'Low': float(candle[3]),
-                'Close': float(candle[4])
-            })
+        # Build separate lists (avoids pandas nested object issues)
+        dates = []
+        opens = []
+        highs = []
+        lows = []
+        closes = []
         
-        df = pd.DataFrame(data)
+        for candle in candles:
+            # Force conversion to native Python types
+            open_time = int(float(str(candle[0])))
+            dates.append(dt.datetime.fromtimestamp(open_time / 1000, tz=dt.timezone.utc).strftime('%Y-%m-%d %H:%M:%S'))
+            opens.append(float(str(candle[1])))
+            highs.append(float(str(candle[2])))
+            lows.append(float(str(candle[3])))
+            closes.append(float(str(candle[4])))
+        
+        # Create DataFrame from separate lists
+        df = pd.DataFrame()
+        df['Date'] = dates
+        df['Open'] = opens
+        df['High'] = highs
+        df['Low'] = lows
+        df['Close'] = closes
+        
         df['Date'] = pd.to_datetime(df['Date'])
         return df
     

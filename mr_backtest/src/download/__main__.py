@@ -86,7 +86,10 @@ Examples:
         print("✅ Download completed successfully!")
         
     except Exception as e:
+        import traceback
         print(f"\n❌ Error: {e}", file=sys.stderr)
+        print("\nFull traceback:", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
 
