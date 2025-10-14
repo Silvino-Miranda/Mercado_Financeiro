@@ -123,13 +123,51 @@ O modelo usa os seguintes indicadores como features:
 
 ## 🔧 Configuração e Instalação
 
-### 1. Instalar dependências
+### ⚡ Instalação Rápida com UV (Recomendado)
 
-```bash
-pip install -r requirements.txt
+Este projeto usa **[UV](https://github.com/astral-sh/uv)** - um gerenciador de pacotes Python extremamente rápido (até 100x mais rápido que pip).
+
+#### 1. Instalar UV (apenas uma vez)
+
+**Windows PowerShell:**
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### 2. Preparar os dados
+**Alternativa com pip:**
+```powershell
+pip install uv
+```
+
+#### 2. Configurar o ambiente (automático)
+
+**Opção A - Script automatizado (PowerShell):**
+```powershell
+.\setup.ps1
+```
+
+**Opção B - Script automatizado (CMD):**
+```cmd
+setup.bat
+```
+
+**Opção C - Manual:**
+```powershell
+uv sync
+```
+
+Este comando irá:
+- ✅ Criar ambiente virtual em `.venv`
+- ✅ Instalar todas as dependências do `pyproject.toml`
+- ✅ Gerar arquivo de lock `uv.lock`
+
+#### 3. Ativar o ambiente
+
+```powershell
+.\activate.bat
+```
+
+### 🔧 Preparar os dados
 
 ```bash
 python prepare_data.py
@@ -139,6 +177,8 @@ Este script irá:
 - Verificar o arquivo `BTCUSDT_30m.csv`
 - Adicionar indicadores técnicos se necessário
 - Criar backup dos dados originais
+
+> 📖 **Mais informações sobre UV:** Veja [_doc/MIGRATION_UV.md](_doc/MIGRATION_UV.md)
 
 ## 🚀 Uso
 

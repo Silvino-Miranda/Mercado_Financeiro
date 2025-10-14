@@ -1,3 +1,48 @@
+# Virtual Environment
 .venv
+venv/
+env/
+
+# Environment variables
 .env
+.env.local
+
+# Python cache
 __pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# UV
+.uv/
+# uv.lock - Recomendado versionar para reprodutibilidade exata
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Models and checkpoints (opcional - comente se quiser versionar)
+# src/ml/checkpoints/*.h5
+# src/ml/checkpoints/*.keras
+
+# Data files (opcional - comente se quiser versionar)
+# data/*.csv
+
+# Outputs
+src/ml/outputs/
+
+# OS specific
+.DS_Store
+Thumbs.db
