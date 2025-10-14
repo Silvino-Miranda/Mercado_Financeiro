@@ -46,6 +46,30 @@ def main():
         )
         return
 
+    print(f"\nTotal de sequências disponíveis: {len(X)}")
+    
+    # IMPORTANTE: Usar apenas dados de TESTE (últimos 15%) para backtesting válido
+    # Isso evita data leakage - o modelo não pode ser testado com dados que ele viu no treinamento
+    train_size = 0.7
+    val_size = 0.15
+    total_samples = len(X)
+    train_end = int(total_samples * train_size)
+    val_end = train_end + int(total_samples * val_size)
+    
+    # Separar apenas o conjunto de TESTE (dados não vistos)
+    X_test = X[val_end:]
+    Y_test = Y[val_end:]
+    dates_test = dates[val_end:]
+    
+    print(f"Usando apenas dados de TESTE para backtesting: {len(X_test)} sequências")
+    print(f"Período de teste: {dates_test[0]} a {dates_test[-1]}")
+    print(f"⚠️ IMPORTANTE: Estes dados NÃO foram usados no treinamento!")
+    
+    # Usar X_test, Y_test, dates_test daqui em diante
+    X = X_test
+    Y = Y_test
+    dates = dates_test
+    
     print(f"\nTotal de sequências para previsão: {len(X)}")
     
     # Carregar o modelo salvo
@@ -71,8 +95,14 @@ def main():
 
     # Criar o DataFrame para o Backtrader
     print("Preparando dados para backtesting...")
-    data_bt = df.iloc[60:60+len(Y)].copy()  # Pular as primeiras 60 linhas (sequence_length)
+    # Calcular o índice inicial no DataFrame original
+    # val_end já foi calculado como 29,800 (85% do total)
+    # Precisamos pular sequence_length (60) + val_end
+    start_idx = 60 + val_end
+    data_bt = df.iloc[start_idx:start_idx+len(Y)].copy()
     data_bt.reset_index(drop=True, inplace=True)
+    
+    print(f"Dados extraídos do índice {start_idx} a {start_idx+len(Y)} do dataset original")
     
     # Selecionar apenas as colunas necessárias (remove colunas com NaN)
     columns_needed = ['Date', 'Open', 'High', 'Low', 'Close', 'SMA_20', 'EMA_20']
