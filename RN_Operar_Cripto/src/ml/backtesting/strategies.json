@@ -1,0 +1,146 @@
+{
+  "strategies": [
+    {
+      "id": 1,
+      "name": "Conservadora TP 1.5%",
+      "description": "Estratégia conservadora com take profit baixo e stop loss apertado",
+      "active": true,
+      "parameters": {
+        "profit_target": 0.015,
+        "stop_loss": 0.01,
+        "stake_percentage": 0.95,
+        "prediction_threshold": 0.005,
+        "hold_periods": 48
+      },
+      "created_at": "2025-10-14T10:00:00",
+      "updated_at": "2025-10-14T10:00:00"
+    },
+    {
+      "id": 2,
+      "name": "Moderada TP 2%",
+      "description": "Estratégia moderada equilibrada - MELHOR RESULTADO nos testes (26.21% retorno)",
+      "active": true,
+      "parameters": {
+        "profit_target": 0.02,
+        "stop_loss": 0.015,
+        "stake_percentage": 0.95,
+        "prediction_threshold": 0.005,
+        "hold_periods": 48
+      },
+      "created_at": "2025-10-14T10:00:00",
+      "updated_at": "2025-10-14T10:00:00"
+    },
+    {
+      "id": 3,
+      "name": "Agressiva TP 3%",
+      "description": "Estratégia agressiva com take profit alto (23.86% retorno nos testes)",
+      "active": true,
+      "parameters": {
+        "profit_target": 0.03,
+        "stop_loss": 0.015,
+        "stake_percentage": 0.95,
+        "prediction_threshold": 0.005,
+        "hold_periods": 48
+      },
+      "created_at": "2025-10-14T10:00:00",
+      "updated_at": "2025-10-14T10:00:00"
+    },
+    {
+      "id": 4,
+      "name": "Moderada Plus TP 2.5%",
+      "description": "Estratégia intermediária entre moderada e agressiva",
+      "active": true,
+      "parameters": {
+        "profit_target": 0.025,
+        "stop_loss": 0.015,
+        "stake_percentage": 0.95,
+        "prediction_threshold": 0.005,
+        "hold_periods": 48
+      },
+      "created_at": "2025-10-14T10:00:00",
+      "updated_at": "2025-10-14T10:00:00"
+    },
+    {
+      "id": 5,
+      "name": "Day Trade TP 1%",
+      "description": "Estratégia de day trade com lucros pequenos e frequentes",
+      "active": true,
+      "parameters": {
+        "profit_target": 0.01,
+        "stop_loss": 0.008,
+        "stake_percentage": 0.90,
+        "prediction_threshold": 0.003,
+        "hold_periods": 24
+      },
+      "created_at": "2025-10-14T10:00:00",
+      "updated_at": "2025-10-14T10:00:00"
+    },
+    {
+      "id": 6,
+      "name": "Swing Trade TP 5%",
+      "description": "Estratégia de swing trade com lucros maiores e menos operações",
+      "active": true,
+      "parameters": {
+        "profit_target": 0.05,
+        "stop_loss": 0.02,
+        "stake_percentage": 0.95,
+        "prediction_threshold": 0.008,
+        "hold_periods": 96
+      },
+      "created_at": "2025-10-14T10:00:00",
+      "updated_at": "2025-10-14T10:00:00"
+    },
+    {
+      "id": 7,
+      "name": "Teste Experimental",
+      "description": "Estratégia para testes e experimentações",
+      "active": false,
+      "parameters": {
+        "profit_target": 0.04,
+        "stop_loss": 0.02,
+        "stake_percentage": 0.80,
+        "prediction_threshold": 0.01,
+        "hold_periods": 72
+      },
+      "created_at": "2025-10-14T10:00:00",
+      "updated_at": "2025-10-14T10:00:00"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2025-10-14T10:00:00",
+    "description": "Configurações de estratégias de trading para backtesting LSTM",
+    "parameter_definitions": {
+      "profit_target": {
+        "description": "Percentual de lucro alvo para venda (ex: 0.02 = 2%)",
+        "type": "float",
+        "min": 0.001,
+        "max": 0.20
+      },
+      "stop_loss": {
+        "description": "Percentual de perda máxima para venda (ex: 0.015 = 1.5%)",
+        "type": "float",
+        "min": 0.001,
+        "max": 0.10
+      },
+      "stake_percentage": {
+        "description": "Percentual do capital disponível para cada operação (ex: 0.95 = 95%)",
+        "type": "float",
+        "min": 0.10,
+        "max": 1.00
+      },
+      "prediction_threshold": {
+        "description": "Limiar de diferença entre previsão e preço atual para sinal (ex: 0.005 = 0.5%)",
+        "type": "float",
+        "min": 0.001,
+        "max": 0.05
+      },
+      "hold_periods": {
+        "description": "Número mínimo de períodos (30min cada) para manter posição (ex: 48 = 24h)",
+        "type": "int",
+        "min": 1,
+        "max": 200
+      }
+    }
+  }
+}

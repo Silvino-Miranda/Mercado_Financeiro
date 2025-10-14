@@ -1,13 +1,25 @@
 import backtrader as bt
 from datetime import datetime
+from typing import Optional
+from .strategy_config import Strategy, StrategyParameters
 
 
 class MyStrategy(bt.Strategy):
+    """
+    Estratégia de Trading LSTM com parâmetros configuráveis
+    
+    Agora os parâmetros são carregados de strategy_config.py / strategies.json
+    permitindo testar múltiplas estratégias sem alterar o código.
+    """
+    
     params = dict(
+        # Parâmetros padrão (podem ser sobrescritos pelo strategy_config)
         stake_percentage=0.95,  # 95% do capital total
-        profit_target=0.03,  # 3% de lucro para vender (Take Profit)
+        profit_target=0.02,  # 2% de lucro para vender (Take Profit)
         stop_loss=0.015,  # 1.5% de perda para stop loss
-        hold_periods=48  # Manter por pelo menos 48 períodos (24 horas em velas de 30min)
+        prediction_threshold=0.005,  # 0.5% threshold para sinais
+        hold_periods=48,  # Manter por pelo menos 48 períodos (24 horas em velas de 30min)
+        strategy_name="Padrão"  # Nome da estratégia (para identificação)
     )
 
     def __init__(self):
@@ -18,6 +30,30 @@ class MyStrategy(bt.Strategy):
         self.trade_history = []
         self.buy_price = None
         self.periods_in_position = 0
+        
+    @classmethod
+    def from_strategy_config(cls, strategy: Strategy):
+        """
+        Cria uma instância da MyStrategy a partir de um objeto Strategy
+        
+        Args:
+            strategy: Objeto Strategy do strategy_config
+            
+        Returns:
+            Classe MyStrategy configurada com os parâmetros da estratégia
+        """
+        # Cria uma nova classe com os parâmetros da estratégia
+        params = dict(
+            stake_percentage=strategy.parameters.stake_percentage,
+            profit_target=strategy.parameters.profit_target,
+            stop_loss=strategy.parameters.stop_loss,
+            prediction_threshold=strategy.parameters.prediction_threshold,
+            hold_periods=strategy.parameters.hold_periods,
+            strategy_name=strategy.name
+        )
+        
+        # Retorna a classe (não a instância) para o Backtrader usar
+        return type(f'MyStrategy_{strategy.id}', (cls,), {'params': params})
 
     def next(self):
         # Calcular tamanho da posição
@@ -38,8 +74,8 @@ class MyStrategy(bt.Strategy):
         
         if not self.position:
             # COMPRA quando modelo prevê ALTA (previsão > preço atual)
-            # Threshold mínimo de 0.5% de diferença para evitar ruído
-            if prediction_deviation > 0.005:  # Previsão 0.5% maior que preço atual
+            # Threshold configurável para evitar ruído
+            if prediction_deviation > self.params.prediction_threshold:
                 self.order = self.buy(size=size)
                 # Nota: buy_price será definido no notify_order quando a ordem for executada
         else:
@@ -63,7 +99,7 @@ class MyStrategy(bt.Strategy):
             elif price_change <= -self.params.stop_loss:
                 should_sell = True  # Stop loss
             elif (self.periods_in_position >= self.params.hold_periods and 
-                  prediction_deviation < -0.005):  # Previsão indica queda > 0.5%
+                  prediction_deviation < -self.params.prediction_threshold):
                 should_sell = True  # Holding time + bearish signal
             
             if should_sell:
