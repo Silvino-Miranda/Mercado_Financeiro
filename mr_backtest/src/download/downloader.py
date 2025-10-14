@@ -52,6 +52,119 @@ class DataDownloader:
         if self.exchange != 'binance':
             raise ValueError(f"Exchange '{exchange}' not supported. Only 'binance' is available.")
     
+    def download_incremental(
+        self,
+        symbol: str,
+        interval: str = '1d',
+        start_date: str = '2017-08-17',
+        end_date: Optional[str] = None,
+        output_path: Optional[str] = None,
+        limit: int = 1000
+    ) -> pd.DataFrame:
+        """
+        Download large datasets incrementally (year by year) to avoid memory issues.
+        
+        This method:
+        1. Splits date range into yearly chunks
+        2. Downloads each year separately
+        3. Saves temporary files
+        4. Concatenates all years into final file
+        
+        Args:
+            symbol: Trading pair symbol (e.g., 'BTCUSDT')
+            interval: Timeframe (e.g., '1d', '1h', '30m')
+            start_date: Start date in YYYY-MM-DD format (default: 2017-08-17)
+            end_date: End date in YYYY-MM-DD format (default: today)
+            output_path: Path to save final CSV file
+            limit: Max candles per request (max 1000 for Binance)
+            
+        Returns:
+            DataFrame with all data concatenated
+        """
+        if end_date is None:
+            end_date = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%d')
+        
+        print(f"\n{'='*80}")
+        print(f"📥 Incremental Download: {symbol} {interval}")
+        print(f"{'='*80}")
+        print(f"Exchange: {self.exchange.upper()}")
+        print(f"Period: {start_date} to {end_date}")
+        print(f"Interval: {interval}")
+        print(f"Strategy: Year-by-year download + concatenation")
+        print(f"{'='*80}\n")
+        
+        # Parse dates
+        start_dt = dt.datetime.fromisoformat(start_date).replace(tzinfo=dt.timezone.utc)
+        end_dt = dt.datetime.fromisoformat(end_date).replace(tzinfo=dt.timezone.utc)
+        
+        # Split into yearly chunks
+        all_dfs = []
+        current_year = start_dt.year
+        end_year = end_dt.year
+        
+        temp_dir = Path("data/temp")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        for year in range(current_year, end_year + 1):
+            # Define year boundaries
+            year_start = dt.datetime(year, 1, 1, tzinfo=dt.timezone.utc)
+            year_end = dt.datetime(year, 12, 31, 23, 59, 59, tzinfo=dt.timezone.utc)
+            
+            # Adjust for first and last year
+            if year == current_year:
+                year_start = start_dt
+            if year == end_year:
+                year_end = end_dt
+            
+            print(f"\n📆 Downloading year {year}...")
+            print(f"   Range: {year_start.strftime('%Y-%m-%d')} to {year_end.strftime('%Y-%m-%d')}")
+            
+            # Download this year
+            try:
+                df_year = self.download(
+                    symbol=symbol,
+                    interval=interval,
+                    start_date=year_start.strftime('%Y-%m-%d'),
+                    end_date=year_end.strftime('%Y-%m-%d'),
+                    output_path=None,  # Don't save yet
+                    limit=limit
+                )
+                
+                # Save temporary file
+                temp_file = temp_dir / f"{symbol}_{interval}_{year}.csv"
+                df_year.to_csv(temp_file, index=False)
+                print(f"   ✅ Saved: {temp_file} ({len(df_year):,} candles)")
+                
+                all_dfs.append(df_year)
+                
+            except Exception as e:
+                print(f"   ⚠️  Warning: Failed to download year {year}: {e}")
+                print(f"   Continuing with remaining years...")
+                continue
+        
+        # Concatenate all years
+        if not all_dfs:
+            raise RuntimeError("No data was downloaded successfully")
+        
+        print(f"\n🔗 Concatenating {len(all_dfs)} year(s)...")
+        df_final = pd.concat(all_dfs, ignore_index=True)
+        df_final = df_final.sort_values('Date').reset_index(drop=True)
+        
+        print(f"\n✅ Total downloaded: {len(df_final):,} candles")
+        print(f"   Period: {df_final['Date'].min()} to {df_final['Date'].max()}")
+        
+        # Save final file
+        if output_path:
+            self._save_csv(df_final, output_path)
+            
+            # Cleanup temp files
+            print(f"\n🧹 Cleaning up temporary files...")
+            for year_file in temp_dir.glob(f"{symbol}_{interval}_*.csv"):
+                year_file.unlink()
+                print(f"   Deleted: {year_file.name}")
+        
+        return df_final
+    
     def download(
         self,
         symbol: str,
@@ -212,32 +325,37 @@ class DataDownloader:
         raise RuntimeError(f"Failed to fetch data from Binance after {max_retries} attempts: {last_error}")
     
     def _candles_to_dataframe(self, candles: List[List]) -> pd.DataFrame:
-        """Convert raw candles to DataFrame."""
-        # Build separate lists (avoids pandas nested object issues)
-        dates = []
-        opens = []
-        highs = []
-        lows = []
-        closes = []
+        """Convert raw candles to DataFrame - Bypass pandas constructor bugs by writing to CSV first."""
+        import csv
+        import tempfile
         
-        for candle in candles:
-            # Force conversion to native Python types
-            open_time = int(float(str(candle[0])))
-            dates.append(dt.datetime.fromtimestamp(open_time / 1000, tz=dt.timezone.utc).strftime('%Y-%m-%d %H:%M:%S'))
-            opens.append(float(str(candle[1])))
-            highs.append(float(str(candle[2])))
-            lows.append(float(str(candle[3])))
-            closes.append(float(str(candle[4])))
+        # Create temporary CSV file
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='') as tmp:
+            writer = csv.writer(tmp)
+            # Write header
+            writer.writerow(['Date', 'Open', 'High', 'Low', 'Close'])
+            
+            # Write data
+            for candle in candles:
+                open_time = int(candle[0])
+                date_str = dt.datetime.fromtimestamp(open_time / 1000, tz=dt.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+                writer.writerow([
+                    date_str,
+                    float(candle[1]),
+                    float(candle[2]),
+                    float(candle[3]),
+                    float(candle[4])
+                ])
+            
+            tmp_path = tmp.name
         
-        # Create DataFrame from separate lists
-        df = pd.DataFrame()
-        df['Date'] = dates
-        df['Open'] = opens
-        df['High'] = highs
-        df['Low'] = lows
-        df['Close'] = closes
-        
+        # Read back with pandas (avoids constructor bugs)
+        df = pd.read_csv(tmp_path)
         df['Date'] = pd.to_datetime(df['Date'])
+        
+        # Clean up temp file
+        Path(tmp_path).unlink()
+        
         return df
     
     def _save_csv(self, df: pd.DataFrame, output_path: str):

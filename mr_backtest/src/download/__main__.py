@@ -61,6 +61,11 @@ Examples:
         default='binance',
         help='Exchange name (default: binance)'
     )
+    parser.add_argument(
+        '--incremental',
+        action='store_true',
+        help='Use incremental download (year-by-year) for large datasets. Recommended for >2 years of data.'
+    )
     
     args = parser.parse_args()
     
@@ -75,15 +80,26 @@ Examples:
     # Download
     try:
         downloader = DataDownloader(exchange=args.exchange)
-        downloader.download(
-            symbol=args.symbol,
-            interval=args.interval,
-            start_date=args.start,
-            end_date=args.end,
-            output_path=args.output
-        )
         
-        print("✅ Download completed successfully!")
+        # Choose download method
+        if args.incremental:
+            downloader.download_incremental(
+                symbol=args.symbol,
+                interval=args.interval,
+                start_date=args.start,
+                end_date=args.end,
+                output_path=args.output
+            )
+        else:
+            downloader.download(
+                symbol=args.symbol,
+                interval=args.interval,
+                start_date=args.start,
+                end_date=args.end,
+                output_path=args.output
+            )
+        
+        print("\n✅ Download completed successfully!")
         
     except Exception as e:
         import traceback
