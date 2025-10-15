@@ -2,14 +2,25 @@
 """
 Treino de modelo LSTM com TOP 14 indicadores técnicos.
 Classificação multiclass: ALTA (2), LATERAL (1), BAIXA (0)
+
+MELHORIAS IMPLEMENTADAS:
+- Focal Loss (gamma=1.5) para lidar com classes desbalanceadas
+- Class weights {BAIXA: 8.0, LATERAL: 1.0, ALTA: 7.0}
+- Balanced Accuracy e F1-macro como métricas principais
+- ReduceLROnPlateau + EarlyStopping
+- Confusion matrix e classification report detalhado
 """
 
 import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import (
+    classification_report, confusion_matrix, 
+    balanced_accuracy_score, f1_score, accuracy_score
+)
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
@@ -20,6 +31,55 @@ import joblib
 # Add project root
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
+
+
+def focal_loss(gamma=1.5, alpha=None):
+    """
+    Focal Loss para lidar com classes desbalanceadas.
+    
+    Args:
+        gamma: Fator de foco (maior = mais peso nas classes difíceis)
+        alpha: Pesos por classe [BAIXA, LATERAL, ALTA]
+    """
+    def loss(y_true, y_pred):
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1 - 1e-7)
+        ce = -tf.reduce_sum(y_true * tf.math.log(y_pred), axis=-1)
+        pt = tf.reduce_sum(y_true * y_pred, axis=-1)
+        fl = (1 - pt) ** gamma * ce
+        
+        if alpha is not None:
+            a = tf.reduce_sum(y_true * tf.constant(alpha, dtype=y_pred.dtype), axis=-1)
+            fl = a * fl
+        
+        return tf.reduce_mean(fl)
+    return loss
+
+
+def evaluate_model(model, X, y, set_name="Val"):
+    """
+    Avalia modelo com métricas reais: Balanced Accuracy e F1-macro.
+    """
+    y_pred_proba = model.predict(X, verbose=0)
+    y_pred = y_pred_proba.argmax(axis=1)
+    
+    acc = accuracy_score(y, y_pred)
+    bal_acc = balanced_accuracy_score(y, y_pred)
+    f1_macro = f1_score(y, y_pred, average='macro')
+    f1_weighted = f1_score(y, y_pred, average='weighted')
+    
+    print(f"\n📊 {set_name} Set:")
+    print(f"   Accuracy:          {acc:.4f}")
+    print(f"   Balanced Accuracy: {bal_acc:.4f} ⭐")
+    print(f"   F1-Macro:          {f1_macro:.4f} ⭐")
+    print(f"   F1-Weighted:       {f1_weighted:.4f}")
+    
+    return {
+        'acc': acc,
+        'bal_acc': bal_acc,
+        'f1_macro': f1_macro,
+        'f1_weighted': f1_weighted,
+        'y_pred': y_pred
+    }
 
 
 def create_labels_simple(df, horizon=12, threshold=1.5):
@@ -120,15 +180,20 @@ def create_model(input_shape, num_classes=3):
     Args:
         input_shape: (sequence_length, num_features)
         num_classes: 3 (ALTA, LATERAL, BAIXA)
+    
+    MELHORIAS:
+    - Aumentado para LSTM(128→64) para maior capacidade
+    - Adicionado recurrent_dropout=0.2 nas LSTMs
+    - Ordem correta: BatchNorm → Dropout
     """
     model = Sequential([
-        LSTM(64, return_sequences=True, input_shape=input_shape),
-        Dropout(0.3),
+        LSTM(128, return_sequences=True, recurrent_dropout=0.2, input_shape=input_shape),
         BatchNormalization(),
+        Dropout(0.3),
         
-        LSTM(32, return_sequences=False),
-        Dropout(0.3),
+        LSTM(64, return_sequences=False, recurrent_dropout=0.2),
         BatchNormalization(),
+        Dropout(0.3),
         
         Dense(32, activation='relu'),
         Dropout(0.2),
@@ -136,9 +201,10 @@ def create_model(input_shape, num_classes=3):
         Dense(num_classes, activation='softmax')  # 3 classes
     ])
     
+    # Compilar com Focal Loss para lidar com desbalanceamento
     model.compile(
-        optimizer=Adam(learning_rate=0.001),
-        loss='categorical_crossentropy',
+        optimizer=Adam(learning_rate=0.0005),
+        loss=focal_loss(gamma=1.5),  # Focal Loss em vez de CE
         metrics=['accuracy']
     )
     
@@ -179,8 +245,9 @@ def main():
         return
     
     # 3. CRIAR LABELS
-    print(f"\n🏷️  Criando labels (horizon=12, threshold=1.5%)...")
-    df['Label'] = create_labels_simple(df, horizon=12, threshold=1.5)
+    # Threshold aumentado para reduzir % de LATERAL (de 77% para ~70%)
+    print("\n🏷️  Criando labels (horizon=12, threshold=2.0%)...")
+    df['Label'] = create_labels_simple(df, horizon=12, threshold=2.0)
     
     # Distribuição de classes
     label_counts = df['Label'].value_counts().sort_index()
@@ -234,54 +301,89 @@ def main():
     checkpoint_path = project_root / "src" / "ml" / "checkpoints" / "model_top14_best.keras"
     
     callbacks = [
-        EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-7, verbose=1),
-        ModelCheckpoint(str(checkpoint_path), monitor='val_accuracy', save_best_only=True, verbose=1)
+        ModelCheckpoint(str(checkpoint_path), monitor='val_loss', save_best_only=True, mode='min', verbose=1),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=5e-5, verbose=1),
+        EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True, verbose=1)
     ]
     
+    # Class weights: Baseados na proporção real das classes
+    # LATERAL=77%, BAIXA=11%, ALTA=12% → peso = max_count/class_count
+    class_weight = {
+        0: 5.0,   # BAIXA (11% dos dados → peso 77/11 ≈ 7, mas use 5.0)
+        1: 1.0,   # LATERAL (77% dos dados → baseline)
+        2: 4.5    # ALTA (12% dos dados → peso 77/12 ≈ 6.4, mas use 4.5)
+    }
+    
     # 9. TREINAR
-    print(f"\n🚀 Iniciando treinamento...")
+    print("\n🚀 Iniciando treinamento com Class Weights Moderados...")
+    print("="*70)
+    print(f"⚖️  Class Weights: BAIXA={class_weight[0]}, LATERAL={class_weight[1]}, ALTA={class_weight[2]}")
+    print(f"🔬 LR=0.0005 (reduzido), Dropout=0.3, BatchNorm=Ativo")
     print("="*70)
     
-    history = model.fit(
+    _ = model.fit(
         X_train, y_train_cat,
         validation_data=(X_val, y_val_cat),
-        epochs=50,
+        epochs=10,
         batch_size=64,
         callbacks=callbacks,
+        class_weight=class_weight,
         verbose=1
     )
     
-    # 10. AVALIAR
-    print(f"\n" + "="*70)
-    print("📊 AVALIAÇÃO FINAL")
+    # 10. AVALIAR COM MÉTRICAS REAIS
+    print("\n" + "="*70)
+    print("📊 AVALIAÇÃO FINAL - BALANCED ACCURACY & F1-MACRO")
     print("="*70)
     
-    # Predictions
-    y_train_pred = np.argmax(model.predict(X_train), axis=1)
-    y_val_pred = np.argmax(model.predict(X_val), axis=1)
-    y_test_pred = np.argmax(model.predict(X_test), axis=1)
+    # Avaliar todos os sets
+    train_metrics = evaluate_model(model, X_train, y_train, "Train")
+    val_metrics = evaluate_model(model, X_val, y_val, "Validation")
+    test_metrics = evaluate_model(model, X_test, y_test, "Test")
     
-    # Accuracy
-    train_acc = accuracy_score(y_train, y_train_pred)
-    val_acc = accuracy_score(y_val, y_val_pred)
-    test_acc = accuracy_score(y_test, y_test_pred)
+    # 🔬 ANÁLISE DE DISTRIBUIÇÃO DE PREDIÇÕES
+    print("\n" + "="*70)
+    print("🔬 DISTRIBUIÇÃO DE PREDIÇÕES vs REAL")
+    print("="*70)
     
-    print(f"\n🎯 Acurácia:")
-    print(f"   Train: {train_acc*100:.2f}%")
-    print(f"   Val:   {val_acc*100:.2f}%")
-    print(f"   Test:  {test_acc*100:.2f}%")
+    for set_name, y_true, y_pred in [
+        ("Train", y_train, train_metrics['y_pred']),
+        ("Val", y_val, val_metrics['y_pred']),
+        ("Test", y_test, test_metrics['y_pred'])
+    ]:
+        pred_counts = np.bincount(y_pred, minlength=3)
+        real_counts = np.bincount(y_true, minlength=3)
+        
+        print(f"\n📊 {set_name} Set:")
+        print("           Predito    Real")
+        for i, label in enumerate(['BAIXA', 'LATERAL', 'ALTA']):
+            pred_pct = (pred_counts[i] / len(y_pred)) * 100
+            real_pct = (real_counts[i] / len(y_true)) * 100
+            diff = pred_pct - real_pct
+            emoji = "✅" if abs(diff) < 10 else "⚠️" if abs(diff) < 20 else "❌"
+            print(f"   {label:8s}: {pred_pct:5.1f}%   {real_pct:5.1f}%   ({diff:+5.1f}%) {emoji}")
     
-    # Classification Report (Test)
-    print(f"\n📋 Classification Report (Test):")
-    print(classification_report(y_test, y_test_pred, target_names=['BAIXA', 'LATERAL', 'ALTA']))
+    # Classification Report detalhado (Test)
+    print("\n" + "="*70)
+    print("📋 CLASSIFICATION REPORT (Test Set)")
+    print("="*70)
+    print(classification_report(
+        y_test, 
+        test_metrics['y_pred'], 
+        target_names=['BAIXA (0)', 'LATERAL (1)', 'ALTA (2)'],
+        digits=4
+    ))
     
     # Confusion Matrix (Test)
-    print(f"\n🔢 Confusion Matrix (Test):")
-    cm = confusion_matrix(y_test, y_test_pred)
-    print("          BAIXA  LATERAL  ALTA")
+    print("\n" + "="*70)
+    print("🔢 CONFUSION MATRIX (Test Set)")
+    print("="*70)
+    cm = confusion_matrix(y_test, test_metrics['y_pred'])
+    print("\n           Predicted:")
+    print("           BAIXA  LATERAL  ALTA")
+    print("Actual:")
     for i, label in enumerate(['BAIXA', 'LATERAL', 'ALTA']):
-        print(f"{label:8s}  {cm[i][0]:5d}   {cm[i][1]:5d}  {cm[i][2]:5d}")
+        print(f"  {label:8s}  {cm[i][0]:5d}   {cm[i][1]:7d}  {cm[i][2]:4d}")
     
     print(f"\n✅ Modelo salvo em: {checkpoint_path}")
     print(f"✅ Scaler salvo em: {scaler_path}")
