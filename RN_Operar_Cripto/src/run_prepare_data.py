@@ -188,14 +188,13 @@ def prepare_btcusdt_data(force_recalculate=False, auto_confirm=False):
     print(f"📦 Backup criado: {backup_path}")
     print(f"📊 Registros: {len(df):,}")
     print(f"📊 Indicadores: {validation['total_indicators']}")
-    print(f"\n🎯 Indicadores principais:")
+    print(f"\n🎯 TOP 14 Indicadores (Análise Empírica):")
     
-    important = ['RSI_14', 'MACD', 'BB_High', 'BB_Low', 'ATR_14', 'OBV', 'ADX', 'SMA_20', 'EMA_20']
-    for ind in important:
-        if ind in df.columns:
-            print(f"   ✅ {ind}")
-        else:
-            print(f"   ❌ {ind} (faltando)")
+    # TOP 14 baseados em Mutual Information
+    top14 = calculator.get_top_features()
+    for i, ind in enumerate(top14, 1):
+        status = "✅" if ind in df.columns else "❌"
+        print(f"   {status} {i:2d}. {ind}")
     
     print(f"\n📋 Colunas no arquivo:")
     for i, col in enumerate(df.columns, 1):
