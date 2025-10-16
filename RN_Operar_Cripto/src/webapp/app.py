@@ -25,9 +25,6 @@ controller.initialize_data()
 # Obter componentes do layout
 header, description, metrics_panel = controller.get_layout_components()
 
-# Obter gráficos
-fig_capital, fig_previsao, fig_trades = controller.get_charts()
-
 # Criar aplicação Dash
 app = dash.Dash(__name__)
 app.title = "Trading Bot Dashboard"
@@ -68,6 +65,20 @@ app.layout = html.Div(
                         selected_style={'padding': '10px', 'fontWeight': 'bold',
                                       'backgroundColor': '#e74c3c', 'color': 'white'}
                     ),
+                    dcc.Tab(
+                        label='📉 Análise Avançada',
+                        value='tab-analise-avancada',
+                        style={'padding': '10px', 'fontWeight': 'bold'},
+                        selected_style={'padding': '10px', 'fontWeight': 'bold',
+                                      'backgroundColor': '#9b59b6', 'color': 'white'}
+                    ),
+                    dcc.Tab(
+                        label='🔬 Análise Profunda',
+                        value='tab-analise-profunda',
+                        style={'padding': '10px', 'fontWeight': 'bold'},
+                        selected_style={'padding': '10px', 'fontWeight': 'bold',
+                                      'backgroundColor': '#f39c12', 'color': 'white'}
+                    ),
                 ],
                 style={'marginTop': '20px', 'marginBottom': '20px'}
             ),
@@ -99,6 +110,7 @@ app.layout = html.Div(
 )
 def render_tab_content(tab):
     """Renderiza o conteúdo de cada tab"""
+    print(f"\n🔍 [DEBUG Callback] render_tab_content chamado com tab='{tab}'\n")
     
     if tab == 'tab-estrategia':
         # TAB 1: ESTRATÉGIA
@@ -190,9 +202,42 @@ def render_tab_content(tab):
     
     elif tab == 'tab-resultados':
         # TAB 2: RESULTADOS
+        insights = controller.get_insights()
+        
+        # Criar cards de insights
+        insight_cards_risk = []
+        insight_cards_strategy = []
+        
+        if insights:
+            for insight in insights.get('risk', []):
+                insight_cards_risk.append(
+                    controller.layout_view.create_insight_card(
+                        insight['title'], insight['message'], insight['type']
+                    )
+                )
+            
+            for insight in insights.get('strategy', []):
+                insight_cards_strategy.append(
+                    controller.layout_view.create_insight_card(
+                        insight['title'], insight['message'], insight['type']
+                    )
+                )
+        
         return html.Div([
             html.H2('💰 Resultados da Estratégia', 
                     style={'color': '#27ae60', 'marginBottom': '20px'}),
+            
+            # Seção de Insights de Risco
+            html.Div([
+                html.H3('🎯 Insights de Risco', style={'color': '#e74c3c', 'marginBottom': '15px'}),
+                *insight_cards_risk
+            ], style={'marginBottom': '30px'}),
+            
+            # Seção de Insights de Estratégia
+            html.Div([
+                html.H3('📊 Insights de Performance', style={'color': '#3498db', 'marginBottom': '15px'}),
+                *insight_cards_strategy
+            ], style={'marginBottom': '30px'}),
             
             # Painel de Métricas
             metrics_panel,
@@ -200,6 +245,9 @@ def render_tab_content(tab):
     
     elif tab == 'tab-graficos':
         # TAB 3: GRÁFICOS
+        # Obter gráficos dinamicamente dentro do callback
+        fig_capital, fig_previsao, fig_trades = controller.get_charts()
+        
         return html.Div([
             html.H2('📈 Análise Gráfica', 
                     style={'color': '#e74c3c', 'marginBottom': '20px'}),
@@ -223,6 +271,255 @@ def render_tab_content(tab):
             dcc.Graph(
                 id='grafico-trades',
                 figure=fig_trades
+            ),
+        ])
+    
+    elif tab == 'tab-analise-avancada':
+        # TAB 4: ANÁLISE AVANÇADA
+        # Obter gráficos avançados dinamicamente
+        advanced_charts = controller.get_advanced_charts()
+        
+        return html.Div([
+            html.H2('📉 Análise Avançada de Performance', 
+                    style={'color': '#9b59b6', 'marginBottom': '20px'}),
+            
+            html.P([
+                '🔍 Esta seção oferece análises aprofundadas para diagnosticar problemas ',
+                'e identificar oportunidades de melhoria no modelo e na estratégia.'
+            ], style={'fontSize': '16px', 'marginBottom': '30px', 'color': '#7f8c8d'}),
+            
+            # Seção 1: Análise de Risco
+            html.Div([
+                html.H3('💀 Análise de Risco', style={'color': '#e74c3c', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Drawdown: '), 
+                    'Mede o quanto o capital caiu desde o pico anterior. ',
+                    'Drawdowns profundos (>20%) indicam risco elevado. ',
+                    'Meta: Manter abaixo de 15%.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('1. Drawdown - Queda desde o Pico'),
+                dcc.Graph(
+                    id='grafico-drawdown',
+                    figure=advanced_charts['drawdown']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 2: Qualidade das Previsões
+            html.Div([
+                html.H3('🎯 Qualidade das Previsões do LSTM', style={'color': '#3498db', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Erro de Previsão: '), 
+                    'Se o modelo sempre prevê valores ACIMA do real (erro positivo), ',
+                    'há BIAS de otimismo. Se sempre prevê ABAIXO (erro negativo), é pessimista. ',
+                    'Meta: Erro próximo de zero com baixa dispersão.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('2. Erro de Previsão (Previsão - Real)'),
+                dcc.Graph(
+                    id='grafico-prediction-error',
+                    figure=advanced_charts['prediction_error']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 3: Distribuição de Resultados
+            html.Div([
+                html.H3('📊 Distribuição de Ganhos e Perdas', style={'color': '#27ae60', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Win/Loss Distribution: '), 
+                    'Mostra quantos trades tiveram X% de lucro/prejuízo. ',
+                    'Ideal: Ganhos maiores que perdas (assimetria positiva). ',
+                    'Problemas: Se perdas são maiores que ganhos em média.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('3. Histograma de Ganhos vs Perdas'),
+                dcc.Graph(
+                    id='grafico-win-loss',
+                    figure=advanced_charts['win_loss_dist']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 4: Retornos Cumulativos
+            html.Div([
+                html.H3('📈 Retornos Cumulativos', style={'color': '#16a085', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Retorno Acumulado (%): '), 
+                    'Visualiza o crescimento percentual do capital desde o início. ',
+                    'Ideal: Curva suave ascendente. ',
+                    'Problemas: Longos períodos planos ou quedas acentuadas.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('4. Evolução do Retorno Percentual'),
+                dcc.Graph(
+                    id='grafico-cumulative-returns',
+                    figure=advanced_charts['cumulative_returns']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 5: Sharpe Ratio Móvel
+            html.Div([
+                html.H3('⚡ Sharpe Ratio Móvel', style={'color': '#9b59b6', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Sharpe Ratio: '), 
+                    'Mede retorno ajustado ao risco. Sharpe > 1 = Bom, > 2 = Excelente, < 0 = Ruim. ',
+                    'Se oscila muito, a estratégia é inconsistente. ',
+                    'Meta: Manter acima de 1.0 consistentemente.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('5. Sharpe Ratio ao Longo do Tempo'),
+                dcc.Graph(
+                    id='grafico-rolling-sharpe',
+                    figure=advanced_charts['rolling_sharpe']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 6: Heatmap Mensal
+            html.Div([
+                html.H3('🔥 Performance Mensal', style={'color': '#e67e22', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Heatmap Mensal: '), 
+                    'Identifica meses problemáticos (vermelho) e lucrativos (verde). ',
+                    'Útil para detectar sazonalidade ou períodos de mercado desfavoráveis.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('6. Retornos por Mês/Ano'),
+                dcc.Graph(
+                    id='grafico-monthly-heatmap',
+                    figure=advanced_charts['monthly_heatmap']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+        ])
+    
+    elif tab == 'tab-analise-profunda':
+        # TAB 5: ANÁLISE PROFUNDA (Níveis 1-4)
+        metrics_adv = controller.get_advanced_metrics()
+        
+        if not metrics_adv:
+            return html.Div([
+                html.H2('🔬 Análise Profunda não disponível'),
+                html.P('Erro ao carregar análises avançadas.')
+            ])
+        
+        return html.Div([
+            html.H2('🔬 Análise Profunda - Níveis 1-4', 
+                    style={'color': '#f39c12', 'marginBottom': '20px'}),
+            
+            html.P([
+                '🚀 Esta seção contém análises avançadas de Machine Learning, ',
+                'Backtesting e Monitoramento em tempo real.'
+            ], style={'fontSize': '16px', 'marginBottom': '30px', 'color': '#7f8c8d'}),
+            
+            # ALERTAS ATIVOS
+            html.Div([
+                html.H3('🚨 Alertas Ativos', style={'color': '#e74c3c'}),
+                *[controller.layout_view.create_insight_card(
+                    alert['title'], alert['message'], alert['type']
+                ) for alert in metrics_adv.get('alerts', [])],
+                html.P('✅ Nenhum alerta crítico' if not metrics_adv.get('alerts') else '',
+                      style={'color': '#27ae60', 'fontWeight': 'bold'})
+            ], style={'marginBottom': '30px'}),
+            
+            # REGIME DE MERCADO
+            html.Div([
+                html.H3('🌡️ Regime de Mercado Atual', style={'color': '#3498db'}),
+                html.Div([
+                    html.H4(f"📊 {metrics_adv.get('regime', {}).get('regime', 'N/A')}", 
+                           style={'color': '#e74c3c', 'fontSize': '28px'}),
+                    html.P(metrics_adv.get('regime', {}).get('descricao', ''), 
+                          style={'fontSize': '16px', 'marginBottom': '15px'}),
+                    html.Div([
+                        html.Span(f"Volatilidade: {metrics_adv.get('regime', {}).get('volatilidade', 0):.2f}%", 
+                                 style={'marginRight': '20px', 'fontWeight': 'bold'}),
+                        html.Span(f"Tendência: {metrics_adv.get('regime', {}).get('tendencia', 0):+.2f}%",
+                                 style={'fontWeight': 'bold'})
+                    ], style={'marginBottom': '15px'}),
+                    html.P([html.Strong('💡 Recomendação: '), 
+                           metrics_adv.get('regime', {}).get('recomendacao', '')],
+                          style={'color': '#27ae60', 'fontSize': '16px', 'fontWeight': 'bold'})
+                ], style={'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '10px'})
+            ], style={'marginBottom': '30px'}),
+            
+            # MÉTRICAS ADICIONAIS (NÍVEL 1)
+            html.Div([
+                html.H3('📊 Métricas Adicionais - Nível 1', style={'color': '#9b59b6'}),
+                html.Div([
+                    html.Div([
+                        html.H4('💰 Risk/Reward Ratio'),
+                        html.P(f"R:R = {metrics_adv.get('risk_reward', {}).get('risk_reward_ratio', 0):.2f}",
+                              style={'fontSize': '24px', 'fontWeight': 'bold', 'color': '#27ae60'}),
+                        html.P(f"Ganho Médio: {metrics_adv.get('risk_reward', {}).get('ganho_medio', 0):.2f}%"),
+                        html.P(f"Perda Média: {metrics_adv.get('risk_reward', {}).get('perda_media', 0):.2f}%"),
+                    ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '15px', 'backgroundColor': '#e8f5e9', 'borderRadius': '8px',
+                             'marginRight': '2%'}),
+                    
+                    html.Div([
+                        html.H4('📉 Sequências Consecutivas'),
+                        html.P(f"{metrics_adv.get('consecutive', {}).get('max_consecutive_losses', 0)} perdas",
+                              style={'fontSize': '24px', 'fontWeight': 'bold', 'color': '#e74c3c'}),
+                        html.P(f"{metrics_adv.get('consecutive', {}).get('max_consecutive_wins', 0)} ganhos consecutivos"),
+                        html.P(f"{metrics_adv.get('consecutive', {}).get('total_sequences', 0)} sequências totais"),
+                    ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '15px', 'backgroundColor': '#fff3cd', 'borderRadius': '8px',
+                             'marginRight': '2%'}),
+                    
+                    html.Div([
+                        html.H4('🎯 Confusion Matrix'),
+                        html.P(f"{metrics_adv.get('confusion_matrix', {}).get('accuracy', 0)*100:.1f}% Accuracy",
+                              style={'fontSize': '24px', 'fontWeight': 'bold', 'color': '#3498db'}),
+                        html.P(f"Precision: {metrics_adv.get('confusion_matrix', {}).get('precision', 0)*100:.1f}%"),
+                        html.P(f"F1-Score: {metrics_adv.get('confusion_matrix', {}).get('f1_score', 0)*100:.1f}%"),
+                    ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '15px', 'backgroundColor': '#d1ecf1', 'borderRadius': '8px'}),
+                ])
+            ], style={'marginBottom': '30px'}),
+            
+            # GRÁFICO: Performance por Hora
+            html.H3('⏰ Performance por Hora do Dia (Nível 1)', style={'color': '#16a085'}),
+            dcc.Graph(
+                id='grafico-hourly',
+                figure=controller.chart_view.create_hourly_performance_chart(metrics_adv.get('hourly'))
+            ),
+            
+            # GRÁFICO: Confusion Matrix
+            html.H3('🎯 Matriz de Confusão do Modelo (Nível 2)', style={'color': '#2980b9'}),
+            dcc.Graph(
+                id='grafico-confusion-matrix',
+                figure=controller.chart_view.create_confusion_matrix_chart(metrics_adv.get('confusion_matrix'))
+            ),
+            
+            # GRÁFICO: Monte Carlo
+            html.H3('🎲 Simulação Monte Carlo - 1000 Cenários (Nível 3)', style={'color': '#8e44ad'}),
+            html.P([
+                f"📈 Probabilidade de lucro: {metrics_adv.get('monte_carlo', {}).get('prob_positive', 0):.1f}% | ",
+                f"📉 Risco de perda > 10%: {metrics_adv.get('monte_carlo', {}).get('prob_loss_10', 0):.1f}% | ",
+                f"🚀 Chance de ganho > 20%: {metrics_adv.get('monte_carlo', {}).get('prob_gain_20', 0):.1f}%"
+            ], style={'fontSize': '16px', 'fontWeight': 'bold', 'marginBottom': '15px'}),
+            dcc.Graph(
+                id='grafico-monte-carlo',
+                figure=controller.chart_view.create_monte_carlo_chart(metrics_adv.get('monte_carlo'))
+            ),
+            
+            # GRÁFICO: Walk-Forward
+            html.H3('🚶 Walk-Forward Analysis (Nível 3)', style={'color': '#27ae60'}),
+            dcc.Graph(
+                id='grafico-walk-forward',
+                figure=controller.chart_view.create_walk_forward_chart(metrics_adv.get('walk_forward'))
+            ),
+            
+            # GRÁFICO: Sensitivity Analysis
+            html.H3('🎚️ Análise de Sensibilidade TP/SL (Nível 3)', style={'color': '#e67e22'}),
+            html.P('Encontre a melhor combinação de Take Profit e Stop Loss para maximizar retorno.',
+                  style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+            dcc.Graph(
+                id='grafico-sensitivity',
+                figure=controller.chart_view.create_sensitivity_heatmap(metrics_adv.get('sensitivity'))
             ),
         ])
 

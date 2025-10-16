@@ -90,11 +90,45 @@ Este diretório contém toda a documentação técnica do projeto de Trading Aut
     - 📊 Gestão de checkpoints
     - 🎯 Recuperação de treinamento
 
-12. **[LIMPEZA_FINAL.md](LIMPEZA_FINAL.md)** ⭐ NOVO
+12. **[LIMPEZA_FINAL.md](LIMPEZA_FINAL.md)** ⭐
     - 🧹 Organização da raiz do projeto
     - 📁 Criação de checkpoints/ e outputs/
     - 🔧 Refatoração de caminhos
     - ⚙️ Configuração centralizada
+
+---
+
+### ⚡ **Gerenciamento de Pacotes (UV)**
+
+13. **[MIGRATION_UV.md](MIGRATION_UV.md)** ✨ NOVO
+    - ⚡ Migração de pip-tools para UV
+    - 📦 Configuração do pyproject.toml
+    - 🚀 Como usar UV (100x mais rápido)
+    - 🔄 Comandos e workflows
+
+14. **[UV_QUICK_GUIDE.md](UV_QUICK_GUIDE.md)** ✨ NOVO
+    - 📋 Referência rápida de comandos UV
+    - 💡 Exemplos práticos
+    - 🎯 Workflows comuns
+    - ⚡ Dicas e truques
+
+15. **[CHANGELOG_UV.md](CHANGELOG_UV.md)** ✨ NOVO
+    - 📝 Registro completo da migração
+    - ✅ Arquivos criados/modificados/removidos
+    - 📊 Comparação de performance
+    - 🎯 Vantagens obtidas
+
+16. **[CLEANUP_SUMMARY.md](CLEANUP_SUMMARY.md)** ✨ NOVO
+    - 🧹 Resumo da limpeza de arquivos
+    - ❌ Arquivos removidos
+    - ✅ Estrutura final
+    - 🚀 Próximos passos
+
+17. **[CHECKLIST_UV.md](CHECKLIST_UV.md)** ✨ NOVO
+    - ✅ Lista de verificação completa
+    - 🧪 Testes de funcionalidade
+    - 📊 Critérios de sucesso
+    - 🆘 Troubleshooting
 
 ---
 
@@ -115,6 +149,11 @@ Este diretório contém toda a documentação técnica do projeto de Trading Aut
 2. Veja **[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** para resumo
 3. Estude **[FINAL_REPORT.md](FINAL_REPORT.md)** para detalhes completos
 
+### Para Configuração e Instalação
+1. Leia **[MIGRATION_UV.md](MIGRATION_UV.md)** para entender o UV
+2. Use **[UV_QUICK_GUIDE.md](UV_QUICK_GUIDE.md)** como referência rápida
+3. Siga **[CHECKLIST_UV.md](CHECKLIST_UV.md)** para verificar a instalação
+
 ---
 
 ## 📊 Estrutura do Projeto (Referência Rápida)
@@ -134,7 +173,13 @@ RN_Operar_Cripto/
 │   ├── PROJECT_SUMMARY.md
 │   ├── TRAINING_IMPROVEMENTS.md
 │   ├── UPDATE_REPORT.md
-│   └── MEMORY_PERSISTENCE.md
+│   ├── MEMORY_PERSISTENCE.md
+│   ├── LIMPEZA_FINAL.md
+│   ├── MIGRATION_UV.md      # ⚡ Migração para UV
+│   ├── UV_QUICK_GUIDE.md    # ⚡ Comandos UV
+│   ├── CHANGELOG_UV.md      # ⚡ Mudanças UV
+│   ├── CLEANUP_SUMMARY.md   # ⚡ Resumo limpeza
+│   └── CHECKLIST_UV.md      # ⚡ Checklist UV
 │
 ├── src/                   # 💻 Código Fonte
 │   ├── ml/               # Machine Learning
@@ -150,21 +195,36 @@ RN_Operar_Cripto/
 
 ## 🚀 Comandos Rápidos
 
-### Treinar Modelo
+### ⚡ Com UV (Recomendado)
 ```powershell
-.venv\Scripts\python.exe src\ml\main_train.py
-```
+# Configurar ambiente (primeira vez)
+uv sync
 
-### Fazer Predições
-```powershell
-.venv\Scripts\python.exe src\ml\main_predict.py
-```
+# Treinar Modelo
+uv run python src\ml\main_train.py
 
-### Executar Dashboard
-```powershell
-.venv\Scripts\python.exe run_webapp.py
+# Fazer Predições
+uv run python src\ml\main_predict.py
+
+# Executar Dashboard
+uv run python src\run_webapp.py
 ```
 🌐 Dashboard: http://127.0.0.1:8050/
+
+### 🐍 Tradicional (com ambiente ativado)
+```powershell
+# Ativar ambiente
+.\activate.bat
+
+# Treinar Modelo
+python src\ml\main_train.py
+
+# Fazer Predições
+python src\ml\main_predict.py
+
+# Executar Dashboard
+python src\run_webapp.py
+```
 
 ---
 
@@ -197,9 +257,11 @@ Para adicionar nova documentação:
 
 ## 📝 Histórico de Atualizações
 
-- **14/10/2025:** Reorganização completa da estrutura do projeto
-- **14/10/2025:** Criação da pasta `_doc/` para documentação
-- **14/10/2025:** Análise detalhada de acertos por tipo de operação
+- **14/10/2025:** ⚡ Migração para UV como gerenciador de pacotes
+- **14/10/2025:** 🧹 Limpeza e organização de arquivos obsoletos
+- **14/10/2025:** 📚 Reorganização completa da documentação em `_doc/`
+- **14/10/2025:** 🏗️ Reorganização completa da estrutura do projeto
+- **14/10/2025:** 📊 Análise detalhada de acertos por tipo de operação
 
 ---
 

@@ -179,6 +179,44 @@ class LayoutView:
                  'borderRadius': '10px', 'margin': '20px 0', 'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'})
     
     @staticmethod
+    def create_insight_card(title: str, message: str, card_type: str = 'info') -> html.Div:
+        """
+        Cria um card de insight/alerta
+        
+        Args:
+            title: Título do insight
+            message: Mensagem do insight
+            card_type: Tipo do card ('success', 'warning', 'danger', 'info')
+            
+        Returns:
+            Componente HTML do card
+        """
+        # Cores por tipo
+        colors = {
+            'success': {'bg': '#d4edda', 'border': '#28a745', 'text': '#155724', 'icon': '✅'},
+            'warning': {'bg': '#fff3cd', 'border': '#ffc107', 'text': '#856404', 'icon': '⚠️'},
+            'danger': {'bg': '#f8d7da', 'border': '#dc3545', 'text': '#721c24', 'icon': '❌'},
+            'info': {'bg': '#d1ecf1', 'border': '#17a2b8', 'text': '#0c5460', 'icon': '💡'}
+        }
+        
+        color = colors.get(card_type, colors['info'])
+        
+        return html.Div([
+            html.Div([
+                html.Span(color['icon'], style={'fontSize': '24px', 'marginRight': '10px'}),
+                html.Strong(title, style={'fontSize': '18px'})
+            ], style={'marginBottom': '10px', 'display': 'flex', 'alignItems': 'center'}),
+            html.P(message, style={'margin': '0', 'lineHeight': '1.6'})
+        ], style={
+            'padding': '15px 20px',
+            'backgroundColor': color['bg'],
+            'border': f'2px solid {color["border"]}',
+            'borderRadius': '8px',
+            'marginBottom': '15px',
+            'color': color['text']
+        })
+    
+    @staticmethod
     def create_section_title(title: str) -> html.H2:
         """
         Cria um título de seção

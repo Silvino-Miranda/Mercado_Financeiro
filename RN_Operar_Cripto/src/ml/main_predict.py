@@ -26,19 +26,52 @@ def main():
     )
     df = data_loader.load_data()
 
-    # Definir features (MESMAS do treinamento)
-    # Nota: RSI_14, MACD, BB, Stoch, OBV têm NaN porque dependem de Volume que não está disponível
+    # ========================================
+    # TODAS AS 18 FEATURES TÉCNICAS (MESMAS DO TREINAMENTO)
+    # ========================================
     feature_columns = [
+        # 1. Dados OHLC (4 features)
         "Open",
         "High",
         "Low",
-        "Close",  # Adicionando Close como feature também
-        "SMA_20",
+        "Close",
+        
+        # 2. Bollinger Bands (3 features)
+        "BB_High",
+        "BB_Mid",
+        "BB_Low",
+        
+        # 3. Keltner Channel (2 features)
+        "Keltner_High",
+        "Keltner_Low",
+        
+        # 4. Donchian Channel (2 features)
+        "Donchian_High",
+        "Donchian_Low",
+        
+        # 5. Médias Móveis Exponenciais (3 features)
+        "EMA_9",
         "EMA_20",
+        "EMA_50",
+        
+        # 6. Médias Móveis Simples (2 features)
+        "SMA_20",
+        "SMA_50",
+        
+        # 7. Indicadores de Momentum/Tendência (2 features)
+        "Aroon_Spread",
+        "MACD_Hist",
     ]
+    
     target_columns = ["Close", "High", "Low"]
     
-    print(f"\nUsando {len(feature_columns)} features: {feature_columns}")
+    print(f"\n{'='*70}")
+    print("CONFIGURAÇÃO DE FEATURES PARA PREDIÇÃO")
+    print(f"{'='*70}")
+    print(f"Total de features: {len(feature_columns)}")
+    print(f"Targets: {target_columns}")
+    print(f"⚠️  CRÍTICO: Usar as MESMAS features do treinamento!")
+    print(f"{'='*70}")
 
     # Inicializar o preprocessador com as mesmas configurações do treinamento
     preprocessor = DataPreprocessor(
@@ -116,8 +149,18 @@ def main():
     
     print(f"Dados extraídos do índice {start_idx} a {start_idx+len(Y)} do dataset original")
     
-    # Selecionar apenas as colunas necessárias (remove colunas com NaN)
-    columns_needed = ['Date', 'Open', 'High', 'Low', 'Close', 'SMA_20', 'EMA_20']
+    # Selecionar colunas OHLC + indicadores técnicos
+    columns_needed = ['Date', 'Open', 'High', 'Low', 'Close'] + [
+        col for col in feature_columns if col not in ['Open', 'High', 'Low', 'Close']
+    ]
+    
+    # Verificar se todas as colunas existem
+    missing_cols = [col for col in columns_needed if col not in data_bt.columns]
+    if missing_cols:
+        print(f"⚠️  Colunas faltando no DataFrame: {missing_cols}")
+        # Remover colunas faltantes da lista
+        columns_needed = [col for col in columns_needed if col in data_bt.columns]
+    
     data_bt = data_bt[columns_needed].copy()
     
     # Renomear e preparar colunas para o backtester
@@ -136,9 +179,14 @@ def main():
     data_bt["prediction"] = Y_pred_close
     data_bt["actual"] = Y_actual_close
     
-    print(f"\nDataFrame preparado: {len(data_bt)} linhas")
-    print("\nAmostra dos dados com previsões:")
+    print(f"\n{'='*70}")
+    print("DADOS PREPARADOS PARA BACKTESTING")
+    print(f"{'='*70}")
+    print(f"Total de linhas: {len(data_bt)}")
+    print(f"Colunas disponíveis: {data_bt.columns.tolist()}")
+    print(f"\nAmostra dos dados com previsões:")
     print(data_bt[["close", "actual", "prediction"]].head(10))
+    print(f"{'='*70}")
 
     # Verificar se há valores NaN e remover se necessário
     initial_rows = len(data_bt)

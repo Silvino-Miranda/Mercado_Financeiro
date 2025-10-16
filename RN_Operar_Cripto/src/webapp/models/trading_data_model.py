@@ -207,6 +207,10 @@ class TradingDataModel:
         Returns:
             DataFrame ou None se não foi carregado
         """
+        if self.df is not None:
+            print(f"🔍 [DEBUG Model] Retornando DataFrame com {len(self.df)} linhas")
+        else:
+            print("❌ [DEBUG Model] DataFrame é None!")
         return self.df
     
     def get_metrics(self) -> Dict:
@@ -217,3 +221,181 @@ class TradingDataModel:
             Dict com métricas ou dict vazio
         """
         return self.metricas if self.metricas else {}
+    
+    def calculate_insights(self) -> Dict:
+        """
+        Calcula insights automáticos baseados nas métricas
+        
+        Returns:
+            Dict com insights por categoria
+        """
+        if not self.metricas or self.df is None:
+            return {}
+        
+        insights = {
+            'risk': [],
+            'model': [],
+            'strategy': [],
+            'opportunity': []
+        }
+        
+        # INSIGHTS DE RISCO
+        # Calcular drawdown máximo
+        df_copy = self.df.copy()
+        df_copy['Peak'] = df_copy['Capital'].cummax()
+        df_copy['Drawdown'] = ((df_copy['Capital'] - df_copy['Peak']) / df_copy['Peak']) * 100
+        max_drawdown = df_copy['Drawdown'].min()
+        
+        if max_drawdown < -20:
+            insights['risk'].append({
+                'type': 'danger',
+                'title': f'Drawdown Crítico: {max_drawdown:.1f}%',
+                'message': 'Risco MUITO ALTO! Drawdown ultrapassou -20%. Recomenda-se reduzir tamanho de posição ou ajustar stop loss.'
+            })
+        elif max_drawdown < -15:
+            insights['risk'].append({
+                'type': 'warning',
+                'title': f'Drawdown Elevado: {max_drawdown:.1f}%',
+                'message': 'Risco alto. Considere ajustar gestão de risco (stop loss mais apertado ou reduzir leverage).'
+            })
+        else:
+            insights['risk'].append({
+                'type': 'success',
+                'title': f'Drawdown Controlado: {max_drawdown:.1f}%',
+                'message': 'Risco dentro do aceitável (< -15%). Gestão de risco adequada.'
+            })
+        
+        # INSIGHTS DO MODELO
+        # Erro de previsão médio
+        df_copy['Erro_Pct'] = ((df_copy['Previsao'] - df_copy['Valor Atual']) / df_copy['Valor Atual']) * 100
+        erro_medio = df_copy['Erro_Pct'].mean()
+        
+        if abs(erro_medio) > 2:
+            bias_type = 'otimista' if erro_medio > 0 else 'pessimista'
+            insights['model'].append({
+                'type': 'warning',
+                'title': f'BIAS Detectado: {erro_medio:+.2f}%',
+                'message': f'Modelo {bias_type} - prevê sistematicamente {"ACIMA" if erro_medio > 0 else "ABAIXO"} do real. Recomenda-se re-treinar com mais dados ou ajustar threshold.'
+            })
+        else:
+            insights['model'].append({
+                'type': 'success',
+                'title': f'Previsões Balanceadas: {erro_medio:+.2f}%',
+                'message': 'Modelo sem bias significativo. Previsões equilibradas.'
+            })
+        
+        # Taxa de acerto
+        if self.metricas['taxa_acerto_geral'] < 45:
+            insights['model'].append({
+                'type': 'danger',
+                'title': f'Taxa de Acerto Baixa: {self.metricas["taxa_acerto_geral"]:.1f}%',
+                'message': 'Taxa de acerto abaixo do ideal (<45%). Modelo pode estar prevendo classe majoritária. Verifique class weights e balanced accuracy.'
+            })
+        elif self.metricas['taxa_acerto_geral'] < 55:
+            insights['model'].append({
+                'type': 'warning',
+                'title': f'Taxa de Acerto Moderada: {self.metricas["taxa_acerto_geral"]:.1f}%',
+                'message': 'Performance aceitável mas há espaço para melhoria. Considere adicionar mais features ou aumentar janela de observação.'
+            })
+        else:
+            insights['model'].append({
+                'type': 'success',
+                'title': f'Taxa de Acerto Boa: {self.metricas["taxa_acerto_geral"]:.1f}%',
+                'message': 'Performance acima de 55% é excelente para mercado financeiro!'
+            })
+        
+        # INSIGHTS DA ESTRATÉGIA
+        # Risk/Reward
+        vendas = df_copy[df_copy['Operacao'] == 'Venda'].copy()
+        vendas['Capital_Anterior'] = vendas['Capital'].shift(1)
+        vendas['Variacao_Pct'] = ((vendas['Capital'] - vendas['Capital_Anterior']) / vendas['Capital_Anterior']) * 100
+        vendas = vendas.dropna()
+        
+        ganhos = vendas[vendas['Variacao_Pct'] > 0]['Variacao_Pct']
+        perdas = vendas[vendas['Variacao_Pct'] <= 0]['Variacao_Pct']
+        
+        ganho_medio = ganhos.mean() if len(ganhos) > 0 else 0
+        perda_media = abs(perdas.mean()) if len(perdas) > 0 else 0
+        
+        if perda_media > 0:
+            risk_reward = ganho_medio / perda_media
+            if risk_reward < 1:
+                insights['strategy'].append({
+                    'type': 'danger',
+                    'title': f'Risk/Reward Desfavorável: {risk_reward:.2f}',
+                    'message': f'Ganho médio ({ganho_medio:.2f}%) < Perda média ({perda_media:.2f}%). Ajuste Take Profit para {perda_media * 1.5:.1f}% ou Stop Loss para {ganho_medio / 1.5:.1f}%.'
+                })
+            elif risk_reward < 1.5:
+                insights['strategy'].append({
+                    'type': 'warning',
+                    'title': f'Risk/Reward Aceitável: {risk_reward:.2f}',
+                    'message': f'Ideal seria > 1.5. Considere aumentar TP ou reduzir SL.'
+                })
+            else:
+                insights['strategy'].append({
+                    'type': 'success',
+                    'title': f'Risk/Reward Excelente: {risk_reward:.2f}',
+                    'message': 'Ganhos superam perdas em média. Ótima gestão de risco!'
+                })
+        
+        # Sharpe Ratio (simplificado)
+        if len(vendas) > 0:
+            retorno_medio = vendas['Variacao_Pct'].mean()
+            volatilidade = vendas['Variacao_Pct'].std()
+            sharpe = (retorno_medio / volatilidade) * (252 ** 0.5) if volatilidade > 0 else 0
+            
+            if sharpe < 0:
+                insights['strategy'].append({
+                    'type': 'danger',
+                    'title': f'Sharpe Ratio Negativo: {sharpe:.2f}',
+                    'message': 'Estratégia perdendo dinheiro. Recomenda-se pausar operações e revisar modelo/estratégia.'
+                })
+            elif sharpe < 1:
+                insights['strategy'].append({
+                    'type': 'warning',
+                    'title': f'Sharpe Ratio Baixo: {sharpe:.2f}',
+                    'message': 'Retorno não compensa o risco. Meta: Sharpe > 1.0'
+                })
+            elif sharpe < 2:
+                insights['strategy'].append({
+                    'type': 'success',
+                    'title': f'Sharpe Ratio Bom: {sharpe:.2f}',
+                    'message': 'Retorno ajustado ao risco está bom (>1.0). Acima de 2.0 seria excelente.'
+                })
+            else:
+                insights['strategy'].append({
+                    'type': 'success',
+                    'title': f'Sharpe Ratio Excepcional: {sharpe:.2f}',
+                    'message': 'Retorno ajustado ao risco EXCEPCIONAL! Continue monitorando para manter consistência.'
+                })
+        
+        # OPORTUNIDADES DE MELHORIA
+        # Assimetria de acerto entre compras e vendas
+        diff_acerto = abs(self.metricas['taxa_acerto_compra'] - self.metricas['taxa_acerto_venda'])
+        if diff_acerto > 15:
+            melhor = 'compras' if self.metricas['taxa_acerto_compra'] > self.metricas['taxa_acerto_venda'] else 'vendas'
+            pior = 'vendas' if melhor == 'compras' else 'compras'
+            insights['opportunity'].append({
+                'type': 'info',
+                'title': f'Assimetria Detectada: {diff_acerto:.1f}% de diferença',
+                'message': f'Modelo acerta mais em {melhor} que em {pior}. Considere ajustar threshold de entrada/saída ou treinar modelo separado para cada direção.'
+            })
+        
+        # Taxa de trades
+        total_dias = (df_copy['Data'].max() - df_copy['Data'].min()).days
+        trades_por_dia = len(vendas) / total_dias if total_dias > 0 else 0
+        
+        if trades_por_dia < 0.5:
+            insights['opportunity'].append({
+                'type': 'info',
+                'title': f'Poucos Trades: {trades_por_dia:.2f} por dia',
+                'message': 'Estratégia conservadora (< 1 trade/dia). Se quiser mais oportunidades, reduza threshold de entrada ou adicione mais pares.'
+            })
+        elif trades_por_dia > 5:
+            insights['opportunity'].append({
+                'type': 'warning',
+                'title': f'Muitos Trades: {trades_por_dia:.2f} por dia',
+                'message': 'Alta frequência (> 5 trades/dia) pode gerar custos elevados de transação. Considere aumentar threshold ou adicionar filtro de volatilidade.'
+            })
+        
+        return insights
