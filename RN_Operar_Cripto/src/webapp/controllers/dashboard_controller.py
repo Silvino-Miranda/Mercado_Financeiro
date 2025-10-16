@@ -22,6 +22,7 @@ class DashboardController:
         self.model = TradingDataModel(csv_path)
         self.chart_view = ChartView()
         self.layout_view = LayoutView()
+        self.advanced = None
         
         # Estado
         self.data_loaded = False
@@ -57,6 +58,16 @@ class DashboardController:
             return False
         
         self.metrics_calculated = True
+        
+        # Inicializar Advanced Analytics
+        try:
+            from src.webapp.models.advanced_analytics import AdvancedAnalytics
+            self.advanced = AdvancedAnalytics(self.model.get_dataframe())
+            print("✅ Advanced Analytics inicializado")
+        except Exception as e:
+            print(f"⚠️ Erro ao inicializar Advanced Analytics: {e}")
+            self.advanced = None
+        
         print("="*70)
         print("✅ DASHBOARD INICIALIZADO COM SUCESSO")
         print("="*70)
@@ -167,6 +178,39 @@ class DashboardController:
         if not self.data_loaded or not self.metrics_calculated:
             return {}
         return self.model.calculate_insights()
+    
+    def get_advanced_metrics(self) -> Dict:
+        """
+        Obtém métricas avançadas dos níveis 1-4
+        
+        Returns:
+            Dict com todas as análises avançadas
+        """
+        if not self.advanced:
+            return {}
+        
+        try:
+            return {
+                'hourly': self.advanced.calculate_hourly_performance(),
+                'risk_reward': self.advanced.calculate_risk_reward_ratio(),
+                'consecutive': self.advanced.calculate_consecutive_losses(),
+                'confusion_matrix': self.advanced.calculate_confusion_matrix(),
+                'monte_carlo': self.advanced.monte_carlo_simulation(n_simulations=1000, n_trades=100),
+                'walk_forward': self.advanced.walk_forward_analysis(window_size=50, step_size=10),
+                'sensitivity': self.advanced.sensitivity_analysis(
+                    tp_range=[0.02, 0.03, 0.04, 0.05],
+                    sl_range=[0.01, 0.015, 0.02, 0.025]
+                ),
+                'alerts': self.advanced.check_alerts({
+                    'drawdown_max': -15,
+                    'sharpe_min': 1.0,
+                    'win_rate_min': 45
+                }),
+                'regime': self.advanced.detect_market_regime()
+            }
+        except Exception as e:
+            print(f"❌ Erro ao calcular métricas avançadas: {e}")
+            return {}
     
     def get_layout_components(self):
         """

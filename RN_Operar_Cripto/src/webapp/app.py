@@ -72,6 +72,13 @@ app.layout = html.Div(
                         selected_style={'padding': '10px', 'fontWeight': 'bold',
                                       'backgroundColor': '#9b59b6', 'color': 'white'}
                     ),
+                    dcc.Tab(
+                        label='🔬 Análise Profunda',
+                        value='tab-analise-profunda',
+                        style={'padding': '10px', 'fontWeight': 'bold'},
+                        selected_style={'padding': '10px', 'fontWeight': 'bold',
+                                      'backgroundColor': '#f39c12', 'color': 'white'}
+                    ),
                 ],
                 style={'marginTop': '20px', 'marginBottom': '20px'}
             ),
@@ -387,6 +394,133 @@ def render_tab_content(tab):
                 ),
             ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
                      'borderRadius': '10px', 'marginBottom': '30px'}),
+        ])
+    
+    elif tab == 'tab-analise-profunda':
+        # TAB 5: ANÁLISE PROFUNDA (Níveis 1-4)
+        metrics_adv = controller.get_advanced_metrics()
+        
+        if not metrics_adv:
+            return html.Div([
+                html.H2('🔬 Análise Profunda não disponível'),
+                html.P('Erro ao carregar análises avançadas.')
+            ])
+        
+        return html.Div([
+            html.H2('🔬 Análise Profunda - Níveis 1-4', 
+                    style={'color': '#f39c12', 'marginBottom': '20px'}),
+            
+            html.P([
+                '🚀 Esta seção contém análises avançadas de Machine Learning, ',
+                'Backtesting e Monitoramento em tempo real.'
+            ], style={'fontSize': '16px', 'marginBottom': '30px', 'color': '#7f8c8d'}),
+            
+            # ALERTAS ATIVOS
+            html.Div([
+                html.H3('🚨 Alertas Ativos', style={'color': '#e74c3c'}),
+                *[controller.layout_view.create_insight_card(
+                    alert['title'], alert['message'], alert['type']
+                ) for alert in metrics_adv.get('alerts', [])],
+                html.P('✅ Nenhum alerta crítico' if not metrics_adv.get('alerts') else '',
+                      style={'color': '#27ae60', 'fontWeight': 'bold'})
+            ], style={'marginBottom': '30px'}),
+            
+            # REGIME DE MERCADO
+            html.Div([
+                html.H3('🌡️ Regime de Mercado Atual', style={'color': '#3498db'}),
+                html.Div([
+                    html.H4(f"📊 {metrics_adv.get('regime', {}).get('regime', 'N/A')}", 
+                           style={'color': '#e74c3c', 'fontSize': '28px'}),
+                    html.P(metrics_adv.get('regime', {}).get('descricao', ''), 
+                          style={'fontSize': '16px', 'marginBottom': '15px'}),
+                    html.Div([
+                        html.Span(f"Volatilidade: {metrics_adv.get('regime', {}).get('volatilidade', 0):.2f}%", 
+                                 style={'marginRight': '20px', 'fontWeight': 'bold'}),
+                        html.Span(f"Tendência: {metrics_adv.get('regime', {}).get('tendencia', 0):+.2f}%",
+                                 style={'fontWeight': 'bold'})
+                    ], style={'marginBottom': '15px'}),
+                    html.P([html.Strong('💡 Recomendação: '), 
+                           metrics_adv.get('regime', {}).get('recomendacao', '')],
+                          style={'color': '#27ae60', 'fontSize': '16px', 'fontWeight': 'bold'})
+                ], style={'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '10px'})
+            ], style={'marginBottom': '30px'}),
+            
+            # MÉTRICAS ADICIONAIS (NÍVEL 1)
+            html.Div([
+                html.H3('📊 Métricas Adicionais - Nível 1', style={'color': '#9b59b6'}),
+                html.Div([
+                    html.Div([
+                        html.H4('💰 Risk/Reward Ratio'),
+                        html.P(f"R:R = {metrics_adv.get('risk_reward', {}).get('risk_reward_ratio', 0):.2f}",
+                              style={'fontSize': '24px', 'fontWeight': 'bold', 'color': '#27ae60'}),
+                        html.P(f"Ganho Médio: {metrics_adv.get('risk_reward', {}).get('ganho_medio', 0):.2f}%"),
+                        html.P(f"Perda Média: {metrics_adv.get('risk_reward', {}).get('perda_media', 0):.2f}%"),
+                    ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '15px', 'backgroundColor': '#e8f5e9', 'borderRadius': '8px',
+                             'marginRight': '2%'}),
+                    
+                    html.Div([
+                        html.H4('📉 Sequências Consecutivas'),
+                        html.P(f"{metrics_adv.get('consecutive', {}).get('max_consecutive_losses', 0)} perdas",
+                              style={'fontSize': '24px', 'fontWeight': 'bold', 'color': '#e74c3c'}),
+                        html.P(f"{metrics_adv.get('consecutive', {}).get('max_consecutive_wins', 0)} ganhos consecutivos"),
+                        html.P(f"{metrics_adv.get('consecutive', {}).get('total_sequences', 0)} sequências totais"),
+                    ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '15px', 'backgroundColor': '#fff3cd', 'borderRadius': '8px',
+                             'marginRight': '2%'}),
+                    
+                    html.Div([
+                        html.H4('🎯 Confusion Matrix'),
+                        html.P(f"{metrics_adv.get('confusion_matrix', {}).get('accuracy', 0)*100:.1f}% Accuracy",
+                              style={'fontSize': '24px', 'fontWeight': 'bold', 'color': '#3498db'}),
+                        html.P(f"Precision: {metrics_adv.get('confusion_matrix', {}).get('precision', 0)*100:.1f}%"),
+                        html.P(f"F1-Score: {metrics_adv.get('confusion_matrix', {}).get('f1_score', 0)*100:.1f}%"),
+                    ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '15px', 'backgroundColor': '#d1ecf1', 'borderRadius': '8px'}),
+                ])
+            ], style={'marginBottom': '30px'}),
+            
+            # GRÁFICO: Performance por Hora
+            html.H3('⏰ Performance por Hora do Dia (Nível 1)', style={'color': '#16a085'}),
+            dcc.Graph(
+                id='grafico-hourly',
+                figure=controller.chart_view.create_hourly_performance_chart(metrics_adv.get('hourly'))
+            ),
+            
+            # GRÁFICO: Confusion Matrix
+            html.H3('🎯 Matriz de Confusão do Modelo (Nível 2)', style={'color': '#2980b9'}),
+            dcc.Graph(
+                id='grafico-confusion-matrix',
+                figure=controller.chart_view.create_confusion_matrix_chart(metrics_adv.get('confusion_matrix'))
+            ),
+            
+            # GRÁFICO: Monte Carlo
+            html.H3('🎲 Simulação Monte Carlo - 1000 Cenários (Nível 3)', style={'color': '#8e44ad'}),
+            html.P([
+                f"📈 Probabilidade de lucro: {metrics_adv.get('monte_carlo', {}).get('prob_positive', 0):.1f}% | ",
+                f"📉 Risco de perda > 10%: {metrics_adv.get('monte_carlo', {}).get('prob_loss_10', 0):.1f}% | ",
+                f"🚀 Chance de ganho > 20%: {metrics_adv.get('monte_carlo', {}).get('prob_gain_20', 0):.1f}%"
+            ], style={'fontSize': '16px', 'fontWeight': 'bold', 'marginBottom': '15px'}),
+            dcc.Graph(
+                id='grafico-monte-carlo',
+                figure=controller.chart_view.create_monte_carlo_chart(metrics_adv.get('monte_carlo'))
+            ),
+            
+            # GRÁFICO: Walk-Forward
+            html.H3('🚶 Walk-Forward Analysis (Nível 3)', style={'color': '#27ae60'}),
+            dcc.Graph(
+                id='grafico-walk-forward',
+                figure=controller.chart_view.create_walk_forward_chart(metrics_adv.get('walk_forward'))
+            ),
+            
+            # GRÁFICO: Sensitivity Analysis
+            html.H3('🎚️ Análise de Sensibilidade TP/SL (Nível 3)', style={'color': '#e67e22'}),
+            html.P('Encontre a melhor combinação de Take Profit e Stop Loss para maximizar retorno.',
+                  style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+            dcc.Graph(
+                id='grafico-sensitivity',
+                figure=controller.chart_view.create_sensitivity_heatmap(metrics_adv.get('sensitivity'))
+            ),
         ])
 
 

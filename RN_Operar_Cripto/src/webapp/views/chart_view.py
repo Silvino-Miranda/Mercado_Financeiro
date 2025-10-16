@@ -5,7 +5,7 @@ Responsável por criar visualizações (gráficos) com Plotly
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from typing import Optional
+from typing import Optional, Dict, List
 
 
 class ChartView:
@@ -363,6 +363,181 @@ class ChartView:
             return fig
         except Exception as e:
             print(f"❌ Erro ao criar heatmap mensal: {e}")
+            return None
+    
+    # ============================================================================
+    # NÍVEL 1: GRÁFICOS ADICIONAIS
+    # ============================================================================
+    
+    @staticmethod
+    def create_hourly_performance_chart(hourly_df: pd.DataFrame) -> go.Figure:
+        """Cria gráfico de performance por hora"""
+        try:
+            fig = go.Figure()
+            
+            fig.add_trace(go.Bar(
+                x=hourly_df['Hora'],
+                y=hourly_df['Win_Rate'],
+                name='Taxa de Acerto (%)',
+                marker_color='lightblue',
+                text=hourly_df['Win_Rate'].round(1),
+                texttemplate='%{text}%',
+                textposition='outside'
+            ))
+            
+            fig.update_layout(
+                title='Taxa de Acerto por Hora do Dia',
+                xaxis_title='Hora',
+                yaxis_title='Taxa de Acerto (%)',
+                hovermode='x unified'
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erro ao criar gráfico hourly: {e}")
+            return None
+    
+    @staticmethod
+    def create_monte_carlo_chart(mc_results: Dict) -> go.Figure:
+        """Cria histograma de simulação Monte Carlo"""
+        try:
+            simulations = mc_results.get('simulations', [])
+            
+            fig = go.Figure()
+            
+            fig.add_trace(go.Histogram(
+                x=simulations,
+                nbinsx=50,
+                name='Distribuição de Retornos',
+                marker_color='purple',
+                opacity=0.7
+            ))
+            
+            # Linhas de percentis
+            fig.add_vline(x=mc_results['percentile_5'], line_dash="dash", line_color="red",
+                         annotation_text=f"P5: {mc_results['percentile_5']:.1f}%")
+            fig.add_vline(x=mc_results['median_return'], line_dash="solid", line_color="green",
+                         annotation_text=f"Mediana: {mc_results['median_return']:.1f}%")
+            fig.add_vline(x=mc_results['percentile_95'], line_dash="dash", line_color="blue",
+                         annotation_text=f"P95: {mc_results['percentile_95']:.1f}%")
+            
+            fig.update_layout(
+                title='Simulação Monte Carlo - Distribuição de Retornos Esperados (1000 simulações)',
+                xaxis_title='Retorno (%)',
+                yaxis_title='Frequência',
+                hovermode='x unified'
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erro ao criar gráfico Monte Carlo: {e}")
+            return None
+    
+    @staticmethod
+    def create_walk_forward_chart(wf_results: List[Dict]) -> go.Figure:
+        """Cria gráfico de Walk-Forward Analysis"""
+        try:
+            if not wf_results:
+                return None
+            
+            df_wf = pd.DataFrame(wf_results)
+            
+            fig = go.Figure()
+            
+            # Retorno por período
+            fig.add_trace(go.Scatter(
+                x=df_wf['periodo_fim'],
+                y=df_wf['retorno'],
+                mode='lines+markers',
+                name='Retorno por Período (%)',
+                line=dict(color='blue', width=2),
+                marker=dict(size=8)
+            ))
+            
+            # Linha zero
+            fig.add_hline(y=0, line_dash="dash", line_color="gray")
+            
+            fig.update_layout(
+                title='Walk-Forward Analysis - Retorno por Período de Validação',
+                xaxis_title='Data Final do Período',
+                yaxis_title='Retorno (%)',
+                hovermode='x unified'
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erro ao criar gráfico Walk-Forward: {e}")
+            return None
+    
+    @staticmethod
+    def create_sensitivity_heatmap(sens_results: List[Dict]) -> go.Figure:
+        """Cria heatmap de análise de sensibilidade TP/SL"""
+        try:
+            if not sens_results:
+                return None
+            
+            df_sens = pd.DataFrame(sens_results)
+            
+            # Pivot para heatmap
+            pivot = df_sens.pivot(index='stop_loss', columns='take_profit', values='retorno_final')
+            
+            fig = go.Figure(data=go.Heatmap(
+                z=pivot.values,
+                x=[f'{tp:.1f}%' for tp in pivot.columns],
+                y=[f'{sl:.1f}%' for sl in pivot.index],
+                colorscale='RdYlGn',
+                text=pivot.values.round(2),
+                texttemplate='%{text}%',
+                textfont={"size": 10},
+                colorbar=dict(title="Retorno (%)")
+            ))
+            
+            fig.update_layout(
+                title='Análise de Sensibilidade - Retorno por Combinação TP/SL',
+                xaxis_title='Take Profit (%)',
+                yaxis_title='Stop Loss (%)',
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erro ao criar heatmap de sensibilidade: {e}")
+            return None
+    
+    @staticmethod
+    def create_confusion_matrix_chart(cm: Dict) -> go.Figure:
+        """Cria visualização de matriz de confusão"""
+        try:
+            # Matriz 2x2
+            matrix = [
+                [cm['true_negative'], cm['false_positive']],
+                [cm['false_negative'], cm['true_positive']]
+            ]
+            
+            labels = [
+                [f"TN: {cm['true_negative']}", f"FP: {cm['false_positive']}"],
+                [f"FN: {cm['false_negative']}", f"TP: {cm['true_positive']}"]
+            ]
+            
+            fig = go.Figure(data=go.Heatmap(
+                z=matrix,
+                x=['Previu BAIXA', 'Previu ALTA'],
+                y=['Real BAIXA', 'Real ALTA'],
+                text=labels,
+                texttemplate='%{text}',
+                textfont={"size": 16},
+                colorscale='Blues',
+                showscale=False
+            ))
+            
+            fig.update_layout(
+                title=f'Matriz de Confusão do Modelo LSTM<br>Accuracy: {cm["accuracy"]*100:.1f}% | F1-Score: {cm["f1_score"]*100:.1f}%',
+                xaxis_title='Previsão do Modelo',
+                yaxis_title='Realidade do Mercado',
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erro ao criar matriz de confusão: {e}")
             return None
     
     @staticmethod
