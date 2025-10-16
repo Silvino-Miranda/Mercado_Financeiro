@@ -15,11 +15,13 @@ from dash import dcc, html
 from src.webapp.controllers.dashboard_controller import DashboardController
 
 
-# Configurações - Caminho atualizado para outputs
-CSV_PATH = 'src/ml/outputs/capital_history-BTCUSDT.csv'
+# Configurações - Agora usando banco SQLite como fonte principal
+DB_PATH = 'data/trading_bot.db'
+CSV_PATH = 'src/ml/outputs/capital_history-BTCUSDT.csv'  # Fallback
+STRATEGY_ID = 1  # Estratégia "Agressiva TP 3%"
 
-# Inicializar Controller
-controller = DashboardController(CSV_PATH)
+# Inicializar Controller com banco de dados
+controller = DashboardController(csv_path=CSV_PATH, db_path=DB_PATH, strategy_id=STRATEGY_ID)
 controller.initialize_data()
 
 # Obter componentes do layout

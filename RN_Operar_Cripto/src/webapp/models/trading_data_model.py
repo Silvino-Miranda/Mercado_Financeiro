@@ -1,32 +1,79 @@
 """
 Model: TradingDataModel
 Responsável por carregar, processar e calcular métricas dos dados de trading
+Agora com suporte a SQLite Database
 """
 import pandas as pd
 from typing import Dict, Optional
+from src.webapp.models.database import TradingDatabase
 
 
 class TradingDataModel:
     """Modelo para gerenciar dados de trading e calcular métricas"""
     
-    def __init__(self, csv_path: str):
+    def __init__(self, csv_path: str = None, db_path: str = "data/trading_bot.db", strategy_id: int = 1):
         """
-        Inicializa o modelo com o caminho do arquivo CSV
+        Inicializa o modelo com banco SQLite ou CSV (fallback)
         
         Args:
-            csv_path: Caminho para o arquivo capital_history CSV
+            csv_path: Caminho para o arquivo capital_history CSV (opcional, fallback)
+            db_path: Caminho para o banco SQLite (padrão: data/trading_bot.db)
+            strategy_id: ID da estratégia a carregar (padrão: 1)
         """
         self.csv_path = csv_path
+        self.db_path = db_path
+        self.strategy_id = strategy_id
         self.df: Optional[pd.DataFrame] = None
         self.metricas: Optional[Dict] = None
+        self.strategy_info: Optional[Dict] = None
+        self._use_database = True  # Preferir banco de dados
         
     def load_data(self) -> bool:
         """
-        Carrega os dados do CSV
+        Carrega os dados do banco SQLite (ou CSV se banco não disponível)
         
         Returns:
             bool: True se carregou com sucesso, False caso contrário
         """
+        # Tentar carregar do banco primeiro
+        if self._use_database:
+            try:
+                db = TradingDatabase(self.db_path)
+                
+                # Carregar informações da estratégia
+                self.strategy_info = db.get_strategy(strategy_id=self.strategy_id)
+                
+                if not self.strategy_info:
+                    print(f"⚠️  Estratégia ID={self.strategy_id} não encontrada no banco")
+                    db.close()
+                    return self._load_from_csv_fallback()
+                
+                # Carregar histórico de trades
+                self.df = db.get_trades_by_strategy(self.strategy_id)
+                db.close()
+                
+                if self.df.empty:
+                    print(f"⚠️  Nenhum trade encontrado para estratégia ID={self.strategy_id}")
+                    return self._load_from_csv_fallback()
+                
+                print(f"✅ Dados carregados do banco: {len(self.df)} registros")
+                print(f"📊 Estratégia: {self.strategy_info['name']}")
+                return True
+                
+            except Exception as e:
+                print(f"⚠️  Erro ao carregar do banco: {e}")
+                print("📂 Tentando carregar do CSV como fallback...")
+                return self._load_from_csv_fallback()
+        
+        else:
+            return self._load_from_csv_fallback()
+    
+    def _load_from_csv_fallback(self) -> bool:
+        """Método de fallback para carregar do CSV original"""
+        if not self.csv_path:
+            print("❌ Nenhum CSV configurado para fallback")
+            return False
+            
         try:
             # Verificar se o arquivo está vazio
             with open(self.csv_path, 'r', encoding='latin-1') as f:
@@ -37,7 +84,23 @@ class TradingDataModel:
             
             # Carregar CSV
             self.df = pd.read_csv(self.csv_path, sep=';')
+            
+            # Renomear colunas para compatibilidade com banco
+            column_mapping = {
+                'Data': 'data',
+                'Operacao': 'operacao',
+                'Status': 'status',
+                'Previsao': 'previsao',
+                'Valor Atual': 'valor_atual',
+                'Preco': 'preco',
+                'Quantidade': 'quantidade',
+                'Custo': 'custo',
+                'Capital': 'capital'
+            }
+            self.df.rename(columns=column_mapping, inplace=True)
+            
             print(f"✅ Arquivo CSV carregado: {len(self.df)} registros")
+            self._use_database = False
             return True
             
         except Exception as e:
@@ -55,16 +118,18 @@ class TradingDataModel:
             return False
             
         try:
-            # Converter coluna Data para datetime
-            self.df['Data'] = pd.to_datetime(self.df['Data'], format='%Y-%m-%d')
+            # Converter coluna data para datetime (se ainda não for)
+            if self.df['data'].dtype != 'datetime64[ns]':
+                self.df['data'] = pd.to_datetime(self.df['data'])
             
-            # Converter colunas numéricas
-            cols_numericas = ['Previsao', 'Valor Atual', 'Preco', 'Custo', 'Capital']
-            for col in cols_numericas:
-                # Verificar se já está em formato numérico
-                if self.df[col].dtype == 'object':
-                    self.df[col] = self.df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-                    self.df[col] = self.df[col].astype(float)
+            # Se veio do banco, as colunas já estão tipadas corretamente
+            # Se veio do CSV, converter colunas numéricas
+            if not self._use_database:
+                cols_numericas = ['previsao', 'valor_atual', 'preco', 'custo', 'capital']
+                for col in cols_numericas:
+                    if self.df[col].dtype == 'object':
+                        self.df[col] = self.df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                        self.df[col] = self.df[col].astype(float)
             
             print("✅ Dados pré-processados com sucesso")
             return True
@@ -85,20 +150,20 @@ class TradingDataModel:
         
         try:
             # Métricas básicas de capital
-            capital_inicial = self.df['Capital'].iloc[0]
-            capital_final = self.df['Capital'].iloc[-1]
+            capital_inicial = self.df['capital'].iloc[0]
+            capital_final = self.df['capital'].iloc[-1]
             retorno_total = ((capital_final - capital_inicial) / capital_inicial) * 100
             
             # Métricas de período
-            data_inicial = self.df['Data'].min()
-            data_final = self.df['Data'].max()
+            data_inicial = self.df['data'].min()
+            data_final = self.df['data'].max()
             dias = (data_final - data_inicial).days
             anos = dias / 365.25
             retorno_anual = ((capital_final / capital_inicial) ** (1 / anos) - 1) * 100 if anos > 0 else 0
             
             # Contar operações
-            compras = self.df[self.df['Operacao'] == 'Compra']
-            vendas = self.df[self.df['Operacao'] == 'Venda']
+            compras = self.df[self.df['operacao'] == 'Compra']
+            vendas = self.df[self.df['operacao'] == 'Venda']
             total_ops = len(self.df)
             
             # Análise detalhada de acertos por operação
@@ -116,16 +181,16 @@ class TradingDataModel:
             previsao_na_compra = None
             
             for idx, row in self.df.iterrows():
-                if row['Operacao'] == 'Compra':
+                if row['operacao'] == 'Compra':
                     # Registrar preço e previsão na compra
-                    preco_compra = row['Preco']
-                    previsao_na_compra = row['Previsao']
+                    preco_compra = row['preco']
+                    previsao_na_compra = row['previsao']
                     
-                elif row['Operacao'] == 'Venda':
-                    preco_venda = row['Preco']
+                elif row['operacao'] == 'Venda':
+                    preco_venda = row['preco']
                     
                     # 1. Avaliar resultado financeiro do trade
-                    if row['Capital'] > capital_anterior:
+                    if row['capital'] > capital_anterior:
                         trades_lucro += 1
                     else:
                         trades_prejuizo += 1
@@ -145,7 +210,7 @@ class TradingDataModel:
                     # 3. Avaliar acerto da VENDA (vendeu no momento certo?)
                     # Verificar se o preço caiu após a venda (olhar próxima linha)
                     if idx + 1 < len(self.df):
-                        preco_depois = self.df.iloc[idx + 1]['Valor Atual']
+                        preco_depois = self.df.iloc[idx + 1]['valor_atual']
                         # Vendeu e preço caiu depois = acerto
                         if preco_depois < preco_venda:
                             acertos_venda += 1
@@ -153,7 +218,7 @@ class TradingDataModel:
                         else:
                             erros_venda += 1
                     
-                    capital_anterior = row['Capital']
+                    capital_anterior = row['capital']
                     preco_compra = None
             
             # Taxas de acerto
@@ -242,8 +307,8 @@ class TradingDataModel:
         # INSIGHTS DE RISCO
         # Calcular drawdown máximo
         df_copy = self.df.copy()
-        df_copy['Peak'] = df_copy['Capital'].cummax()
-        df_copy['Drawdown'] = ((df_copy['Capital'] - df_copy['Peak']) / df_copy['Peak']) * 100
+        df_copy['Peak'] = df_copy['capital'].cummax()
+        df_copy['Drawdown'] = ((df_copy['capital'] - df_copy['Peak']) / df_copy['Peak']) * 100
         max_drawdown = df_copy['Drawdown'].min()
         
         if max_drawdown < -20:
@@ -267,7 +332,7 @@ class TradingDataModel:
         
         # INSIGHTS DO MODELO
         # Erro de previsão médio
-        df_copy['Erro_Pct'] = ((df_copy['Previsao'] - df_copy['Valor Atual']) / df_copy['Valor Atual']) * 100
+        df_copy['Erro_Pct'] = ((df_copy['previsao'] - df_copy['valor_atual']) / df_copy['valor_atual']) * 100
         erro_medio = df_copy['Erro_Pct'].mean()
         
         if abs(erro_medio) > 2:
@@ -306,9 +371,9 @@ class TradingDataModel:
         
         # INSIGHTS DA ESTRATÉGIA
         # Risk/Reward
-        vendas = df_copy[df_copy['Operacao'] == 'Venda'].copy()
-        vendas['Capital_Anterior'] = vendas['Capital'].shift(1)
-        vendas['Variacao_Pct'] = ((vendas['Capital'] - vendas['Capital_Anterior']) / vendas['Capital_Anterior']) * 100
+        vendas = df_copy[df_copy['operacao'] == 'Venda'].copy()
+        vendas['Capital_Anterior'] = vendas['capital'].shift(1)
+        vendas['Variacao_Pct'] = ((vendas['capital'] - vendas['Capital_Anterior']) / vendas['Capital_Anterior']) * 100
         vendas = vendas.dropna()
         
         ganhos = vendas[vendas['Variacao_Pct'] > 0]['Variacao_Pct']
@@ -382,7 +447,7 @@ class TradingDataModel:
             })
         
         # Taxa de trades
-        total_dias = (df_copy['Data'].max() - df_copy['Data'].min()).days
+        total_dias = (df_copy['data'].max() - df_copy['data'].min()).days
         trades_por_dia = len(vendas) / total_dias if total_dias > 0 else 0
         
         if trades_por_dia < 0.5:

@@ -1,6 +1,7 @@
 """
 Controller: DashboardController
 Responsável por orquestrar Model e View, controlando o fluxo da aplicação
+Atualizado para usar banco de dados SQLite
 """
 from typing import Dict, Tuple, Optional
 import pandas as pd
@@ -12,14 +13,16 @@ from src.webapp.views.layout_view import LayoutView
 class DashboardController:
     """Controller principal do dashboard"""
     
-    def __init__(self, csv_path: str):
+    def __init__(self, csv_path: str = None, db_path: str = "data/trading_bot.db", strategy_id: int = 1):
         """
         Inicializa o controller
         
         Args:
-            csv_path: Caminho para o arquivo CSV de dados
+            csv_path: Caminho para o arquivo CSV de dados (opcional, fallback)
+            db_path: Caminho para o banco SQLite (padrão: data/trading_bot.db)
+            strategy_id: ID da estratégia a visualizar (padrão: 1)
         """
-        self.model = TradingDataModel(csv_path)
+        self.model = TradingDataModel(csv_path=csv_path, db_path=db_path, strategy_id=strategy_id)
         self.chart_view = ChartView()
         self.layout_view = LayoutView()
         self.advanced = None
