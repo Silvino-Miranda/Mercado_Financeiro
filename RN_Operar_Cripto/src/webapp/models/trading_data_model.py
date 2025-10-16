@@ -207,6 +207,10 @@ class TradingDataModel:
         Returns:
             DataFrame ou None se não foi carregado
         """
+        if self.df is not None:
+            print(f"🔍 [DEBUG Model] Retornando DataFrame com {len(self.df)} linhas")
+        else:
+            print("❌ [DEBUG Model] DataFrame é None!")
         return self.df
     
     def get_metrics(self) -> Dict:

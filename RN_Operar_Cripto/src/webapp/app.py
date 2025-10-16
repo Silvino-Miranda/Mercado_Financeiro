@@ -16,7 +16,7 @@ from src.webapp.controllers.dashboard_controller import DashboardController
 
 
 # Configurações - Caminho atualizado para outputs
-CSV_PATH = 'src/ml/outputs/capital_history-Agressiva_TP_3%.csv'
+CSV_PATH = 'src/ml/outputs/capital_history-BTCUSDT.csv'
 
 # Inicializar Controller
 controller = DashboardController(CSV_PATH)
@@ -24,9 +24,6 @@ controller.initialize_data()
 
 # Obter componentes do layout
 header, description, metrics_panel = controller.get_layout_components()
-
-# Obter gráficos
-fig_capital, fig_previsao, fig_trades = controller.get_charts()
 
 # Criar aplicação Dash
 app = dash.Dash(__name__)
@@ -99,6 +96,7 @@ app.layout = html.Div(
 )
 def render_tab_content(tab):
     """Renderiza o conteúdo de cada tab"""
+    print(f"\n🔍 [DEBUG Callback] render_tab_content chamado com tab='{tab}'\n")
     
     if tab == 'tab-estrategia':
         # TAB 1: ESTRATÉGIA
@@ -200,6 +198,9 @@ def render_tab_content(tab):
     
     elif tab == 'tab-graficos':
         # TAB 3: GRÁFICOS
+        # Obter gráficos dinamicamente dentro do callback
+        fig_capital, fig_previsao, fig_trades = controller.get_charts()
+        
         return html.Div([
             html.H2('📈 Análise Gráfica', 
                     style={'color': '#e74c3c', 'marginBottom': '20px'}),

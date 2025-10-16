@@ -69,11 +69,21 @@ class DashboardController:
         Returns:
             Tuple: (fig_capital, fig_previsao, fig_trades)
         """
+        print(f"🔍 [DEBUG Controller] get_charts() chamado. data_loaded={self.data_loaded}")
+        
         if not self.data_loaded:
+            print("⚠️ [DEBUG Controller] Dados não carregados, retornando gráficos vazios")
             empty = self.chart_view.create_empty_chart()
             return (empty, empty, empty)
         
         df = self.model.get_dataframe()
+        
+        if df is None:
+            print("❌ [DEBUG Controller] DataFrame é None!")
+            empty = self.chart_view.create_empty_chart("DataFrame não encontrado")
+            return (empty, empty, empty)
+        
+        print(f"🔍 [DEBUG Controller] Criando gráficos com {len(df)} linhas de dados")
         
         fig_capital = self.chart_view.create_capital_evolution_chart(df)
         fig_previsao = self.chart_view.create_prediction_vs_actual_chart(df)
@@ -87,6 +97,7 @@ class DashboardController:
         if fig_trades is None:
             fig_trades = self.chart_view.create_empty_chart("Erro no gráfico de trades")
         
+        print("✅ [DEBUG Controller] Gráficos criados com sucesso")
         return (fig_capital, fig_previsao, fig_trades)
     
     def get_metrics(self) -> Optional[Dict]:

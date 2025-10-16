@@ -23,13 +23,20 @@ class ChartView:
             Figure do Plotly ou None
         """
         try:
+            print(f"🔍 [DEBUG] DataFrame shape: {df.shape}")
+            print(f"🔍 [DEBUG] Colunas disponíveis: {df.columns.tolist()}")
+            print(f"🔍 [DEBUG] Primeiras 3 linhas:\n{df.head(3)}")
+            
             fig = px.line(df, x='Data', y='Capital',
                          labels={'Capital': 'Capital ($)', 'Data': 'Data'},
                          title='Evolução do Capital ao Longo do Tempo')
             fig.update_traces(line_color='green', line_width=2)
+            print(f"✅ [DEBUG] Gráfico de capital criado com sucesso")
             return fig
         except Exception as e:
             print(f"❌ Erro ao criar gráfico de capital: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     @staticmethod

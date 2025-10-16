@@ -82,9 +82,41 @@ def evaluate_model(model, X, y, set_name="Val"):
     }
 
 
-def create_labels_simple(df, horizon=12, threshold=1.5):
+def create_labels_adaptive_atr(df, horizon=12, k=0.75):
     """
-    Cria labels simples com threshold fixo.
+    Cria labels usando ATR% (Adaptive Threshold) - MELHOR para crypto volátil.
+    
+    Args:
+        df: DataFrame com colunas 'Close', 'High', 'Low'
+        horizon: Quantos períodos para frente (12 = 6h em 30min)
+        k: Multiplicador do ATR% (0.5-1.0)
+        
+    Returns:
+        Series com labels: 2=ALTA, 1=LATERAL, 0=BAIXA
+    """
+    # Calcular ATR% (volatilidade adaptativa)
+    from ta.volatility import AverageTrueRange
+    
+    atr = AverageTrueRange(high=df['High'], low=df['Low'], close=df['Close'], window=14)
+    atr_pct = (atr.average_true_range() / df['Close']) * 100
+    
+    # Retorno futuro
+    future_return = (df['Close'].shift(-horizon) / df['Close'] - 1) * 100
+    
+    # Threshold dinâmico por período
+    threshold = k * atr_pct
+    
+    labels = np.zeros(len(df), dtype=int)
+    labels[future_return > threshold] = 2   # ALTA
+    labels[future_return < -threshold] = 0  # BAIXA
+    labels[(future_return >= -threshold) & (future_return <= threshold)] = 1  # LATERAL
+    
+    return pd.Series(labels, index=df.index)
+
+
+def create_labels_simple(df, horizon=12, threshold=1.0):
+    """
+    Cria labels simples com threshold fixo - BACKUP.
     
     Args:
         df: DataFrame com coluna 'Close'
@@ -175,36 +207,46 @@ def split_data(X, y, dates, train_ratio=0.7, val_ratio=0.15):
 
 def create_model(input_shape, num_classes=3):
     """
-    Cria modelo LSTM para classificação multiclass.
+    Cria modelo LSTM para classificação multiclass com MAIOR CAPACIDADE.
     
     Args:
         input_shape: (sequence_length, num_features)
         num_classes: 3 (ALTA, LATERAL, BAIXA)
     
-    MELHORIAS:
-    - Aumentado para LSTM(128→64) para maior capacidade
-    - Adicionado recurrent_dropout=0.2 nas LSTMs
-    - Ordem correta: BatchNorm → Dropout
+    AJUSTES PARA 18 FEATURES:
+    - LSTM(256→128→64) - Arquitetura mais profunda
+    - Recurrent_dropout=0.2 nas LSTMs
+    - Dense(64) antes da saída (mais capacidade de decisão)
+    - Total: ~400K params (vs 125K anterior)
     """
     model = Sequential([
-        LSTM(128, return_sequences=True, recurrent_dropout=0.2, input_shape=input_shape),
+        # 1ª LSTM: 256 unidades (dobrado para lidar com 18 features)
+        LSTM(256, return_sequences=True, recurrent_dropout=0.2, input_shape=input_shape),
         BatchNormalization(),
         Dropout(0.3),
         
+        # 2ª LSTM: 128 unidades (camada intermediária)
+        LSTM(128, return_sequences=True, recurrent_dropout=0.2),
+        BatchNormalization(),
+        Dropout(0.3),
+        
+        # 3ª LSTM: 64 unidades (camada de compressão)
         LSTM(64, return_sequences=False, recurrent_dropout=0.2),
         BatchNormalization(),
         Dropout(0.3),
         
-        Dense(32, activation='relu'),
+        # Dense: 64 unidades (decisão)
+        Dense(64, activation='relu'),
         Dropout(0.2),
         
-        Dense(num_classes, activation='softmax')  # 3 classes
+        # Output: 3 classes
+        Dense(num_classes, activation='softmax')
     ])
     
-    # Compilar com Focal Loss para lidar com desbalanceamento
+    # Usar Categorical Crossentropy com LR ajustado para modelo maior
     model.compile(
-        optimizer=Adam(learning_rate=0.0005),
-        loss=focal_loss(gamma=1.5),  # Focal Loss em vez de CE
+        optimizer=Adam(learning_rate=0.0005),  # LR reduzido para modelo maior
+        loss='categorical_crossentropy',
         metrics=['accuracy']
     )
     
@@ -245,9 +287,10 @@ def main():
         return
     
     # 3. CRIAR LABELS
-    # Threshold aumentado para reduzir % de LATERAL (de 77% para ~70%)
-    print("\n🏷️  Criando labels (horizon=12, threshold=2.0%)...")
-    df['Label'] = create_labels_simple(df, horizon=12, threshold=2.0)
+    # Usar ATR% ADAPTATIVO em vez de threshold fixo
+    # ATR% ajusta threshold baseado na volatilidade do mercado
+    print("\n🏷️  Criando labels com ATR% adaptativo (horizon=12, k=0.75)...")
+    df['Label'] = create_labels_adaptive_atr(df, horizon=12, k=0.75)
     
     # Distribuição de classes
     label_counts = df['Label'].value_counts().sort_index()
@@ -302,30 +345,32 @@ def main():
     
     callbacks = [
         ModelCheckpoint(str(checkpoint_path), monitor='val_loss', save_best_only=True, mode='min', verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=5e-5, verbose=1),
-        EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True, verbose=1)
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=5e-5, verbose=1),  # patience 3→5
+        EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)  # patience 6→10
     ]
     
-    # Class weights: Baseados na proporção real das classes
-    # LATERAL=77%, BAIXA=11%, ALTA=12% → peso = max_count/class_count
+    # Class weights: MODERADOS (distribuição já está balanceada!)
+    # Com ATR% adaptativo gerando 31%/36%/33%, não precisamos weights fortes
     class_weight = {
-        0: 5.0,   # BAIXA (11% dos dados → peso 77/11 ≈ 7, mas use 5.0)
-        1: 1.0,   # LATERAL (77% dos dados → baseline)
-        2: 4.5    # ALTA (12% dos dados → peso 77/12 ≈ 6.4, mas use 4.5)
+        0: 1.2,   # BAIXA (leve boost)
+        1: 1.0,   # LATERAL (baseline)
+        2: 1.1    # ALTA (leve boost)
     }
     
     # 9. TREINAR
-    print("\n🚀 Iniciando treinamento com Class Weights Moderados...")
+    print("\n🚀 Iniciando treinamento - Modelo GRANDE (3 LSTMs)...")
     print("="*70)
     print(f"⚖️  Class Weights: BAIXA={class_weight[0]}, LATERAL={class_weight[1]}, ALTA={class_weight[2]}")
-    print(f"🔬 LR=0.0005 (reduzido), Dropout=0.3, BatchNorm=Ativo")
+    print("🏗️  Arquitetura: LSTM(256→128→64) + Dense(64) → ~400K params")
+    print("🔬 LR=0.0005 (reduzido), Batch=32, Dropout=0.3")
+    print("📏 Labeling: ATR% adaptativo (k=0.75) → Distribuição BALANCEADA!")
     print("="*70)
     
     _ = model.fit(
         X_train, y_train_cat,
         validation_data=(X_val, y_val_cat),
-        epochs=10,
-        batch_size=64,
+        epochs=50,
+        batch_size=32,  # Reduzido para 32 (modelo maior requer batches menores)
         callbacks=callbacks,
         class_weight=class_weight,
         verbose=1

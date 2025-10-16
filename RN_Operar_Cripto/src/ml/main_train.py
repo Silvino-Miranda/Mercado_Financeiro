@@ -35,21 +35,59 @@ def main():
     print(f"Colunas disponíveis: {df.columns.tolist()}")
     print(f"{'='*70}\n")
 
-    # Definir features disponíveis (apenas as que não dependem de Volume)
-    # Nota: RSI_14, MACD, BB, Stoch, OBV têm NaN porque dependem de Volume que não está disponível
+    # ========================================
+    # TODAS AS 18 FEATURES TÉCNICAS DISPONÍVEIS
+    # ========================================
     feature_columns = [
+        # 1. Dados OHLC (4 features)
         "Open",
         "High",
         "Low",
-        "Close",  # Adicionando Close como feature também
-        "SMA_20",
+        "Close",
+        
+        # 2. Bollinger Bands (3 features)
+        "BB_High",
+        "BB_Mid",
+        "BB_Low",
+        
+        # 3. Keltner Channel (2 features)
+        "Keltner_High",
+        "Keltner_Low",
+        
+        # 4. Donchian Channel (2 features)
+        "Donchian_High",
+        "Donchian_Low",
+        
+        # 5. Médias Móveis Exponenciais (3 features)
+        "EMA_9",
         "EMA_20",
+        "EMA_50",
+        
+        # 6. Médias Móveis Simples (2 features)
+        "SMA_20",
+        "SMA_50",
+        
+        # 7. Indicadores de Momentum/Tendência (2 features)
+        "Aroon_Spread",
+        "MACD_Hist",
     ]
+    
     target_columns = ["Close", "High", "Low"]
     
-    print(f"Features usadas ({len(feature_columns)}): {feature_columns}")
-    print(f"Targets ({len(target_columns)}): {target_columns}")
-    print("Nota: Indicadores que dependem de Volume (RSI, MACD, BB, Stoch, OBV) não estão disponíveis\n")
+    print(f"\n{'='*70}")
+    print("CONFIGURAÇÃO DAS FEATURES")
+    print(f"{'='*70}")
+    print(f"Total de features: {len(feature_columns)}")
+    print(f"\n📊 Grupos de Indicadores:")
+    print(f"   • OHLC:                4 features")
+    print(f"   • Bollinger Bands:     3 features")
+    print(f"   • Keltner Channel:     2 features")
+    print(f"   • Donchian Channel:    2 features")
+    print(f"   • Médias Exponenciais: 3 features")
+    print(f"   • Médias Simples:      2 features")
+    print(f"   • Momentum/Tendência:  2 features")
+    print(f"\n🎯 Targets para predição: {target_columns}")
+    print(f"{'='*70}\n")
 
     # Inicializar o preprocessador de dados
     preprocessor = DataPreprocessor(
