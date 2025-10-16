@@ -334,7 +334,7 @@ def main():
     parser_train = subparsers.add_parser("train", help="Treina o modelo")
     parser_train.add_argument("--csv", required=True, help="Caminho do CSV")
     parser_train.add_argument("--lookback", type=int, default=60, help="Janela temporal")
-    parser_train.add_argument("--epochs", type=int, default=50, help="Épocas de treino")
+    parser_train.add_argument("--epochs", type=int, default=10, help="Épocas de treino")
     parser_train.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser_train.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser_train.add_argument("--patience", type=int, default=10, help="Early stopping patience")
@@ -349,7 +349,7 @@ def main():
     parser_wf.add_argument("--csv", required=True, help="Caminho do CSV")
     parser_wf.add_argument("--lookback", type=int, default=60, help="Janela temporal")
     parser_wf.add_argument("--folds", type=int, default=3, help="Número de folds")
-    parser_wf.add_argument("--epochs", type=int, default=50, help="Épocas por fold")
+    parser_wf.add_argument("--epochs", type=int, default=10, help="Épocas por fold")
     parser_wf.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser_wf.add_argument("--verbose", action="store_true", help="Verbose training")
     
