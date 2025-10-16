@@ -413,21 +413,113 @@ def render_tab_content(tab):
             html.P([
                 '🚀 Esta seção contém análises avançadas de Machine Learning, ',
                 'Backtesting e Monitoramento em tempo real.'
-            ], style={'fontSize': '16px', 'marginBottom': '30px', 'color': '#7f8c8d'}),
+            ], style={'fontSize': '16px', 'marginBottom': '15px', 'color': '#7f8c8d'}),
+            
+            # LEGENDA DOS NÍVEIS
+            html.Div([
+                html.H3('📚 Legenda dos Níveis de Análise', 
+                       style={'color': '#2c3e50', 'marginBottom': '15px', 'textAlign': 'center'}),
+                html.Div([
+                    # Nível 1
+                    html.Div([
+                        html.Div([
+                            html.Span('1️⃣', style={'fontSize': '32px', 'marginBottom': '10px'}),
+                            html.H4('NÍVEL 1', style={'margin': '10px 0 5px 0', 'color': '#3498db'}),
+                            html.H5('Métricas Adicionais', style={'margin': '0 0 10px 0', 'fontWeight': 'normal'}),
+                        ], style={'textAlign': 'center', 'marginBottom': '10px'}),
+                        html.Ul([
+                            html.Li('⏰ Win Rate por Hora'),
+                            html.Li('💰 Risk/Reward Ratio'),
+                            html.Li('📉 Sequências Consecutivas'),
+                        ], style={'fontSize': '14px', 'lineHeight': '1.8'}),
+                        html.P('Para traders', style={'fontSize': '12px', 'color': '#7f8c8d', 'marginTop': '10px', 'fontStyle': 'italic'})
+                    ], style={'width': '23%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '20px', 'backgroundColor': '#e3f2fd', 'borderRadius': '10px',
+                             'marginRight': '1.5%', 'border': '2px solid #3498db'}),
+                    
+                    # Nível 2
+                    html.Div([
+                        html.Div([
+                            html.Span('2️⃣', style={'fontSize': '32px', 'marginBottom': '10px'}),
+                            html.H4('NÍVEL 2', style={'margin': '10px 0 5px 0', 'color': '#9b59b6'}),
+                            html.H5('Análise de Modelo ML', style={'margin': '0 0 10px 0', 'fontWeight': 'normal'}),
+                        ], style={'textAlign': 'center', 'marginBottom': '10px'}),
+                        html.Ul([
+                            html.Li('🎯 Confusion Matrix'),
+                            html.Li('📊 Accuracy & F1-Score'),
+                            html.Li('🔗 Feature Correlation'),
+                        ], style={'fontSize': '14px', 'lineHeight': '1.8'}),
+                        html.P('Para ML engineers', style={'fontSize': '12px', 'color': '#7f8c8d', 'marginTop': '10px', 'fontStyle': 'italic'})
+                    ], style={'width': '23%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '20px', 'backgroundColor': '#f3e5f5', 'borderRadius': '10px',
+                             'marginRight': '1.5%', 'border': '2px solid #9b59b6'}),
+                    
+                    # Nível 3
+                    html.Div([
+                        html.Div([
+                            html.Span('3️⃣', style={'fontSize': '32px', 'marginBottom': '10px'}),
+                            html.H4('NÍVEL 3', style={'margin': '10px 0 5px 0', 'color': '#27ae60'}),
+                            html.H5('Backtesting Avançado', style={'margin': '0 0 10px 0', 'fontWeight': 'normal'}),
+                        ], style={'textAlign': 'center', 'marginBottom': '10px'}),
+                        html.Ul([
+                            html.Li('🎲 Monte Carlo (1000x)'),
+                            html.Li('🚶 Walk-Forward'),
+                            html.Li('🎚️ Sensitivity TP/SL'),
+                        ], style={'fontSize': '14px', 'lineHeight': '1.8'}),
+                        html.P('Para otimização', style={'fontSize': '12px', 'color': '#7f8c8d', 'marginTop': '10px', 'fontStyle': 'italic'})
+                    ], style={'width': '23%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '20px', 'backgroundColor': '#e8f5e9', 'borderRadius': '10px',
+                             'marginRight': '1.5%', 'border': '2px solid #27ae60'}),
+                    
+                    # Nível 4
+                    html.Div([
+                        html.Div([
+                            html.Span('4️⃣', style={'fontSize': '32px', 'marginBottom': '10px'}),
+                            html.H4('NÍVEL 4', style={'margin': '10px 0 5px 0', 'color': '#e74c3c'}),
+                            html.H5('Alerts & Monitoramento', style={'margin': '0 0 10px 0', 'fontWeight': 'normal'}),
+                        ], style={'textAlign': 'center', 'marginBottom': '10px'}),
+                        html.Ul([
+                            html.Li('🚨 Alertas de Risco'),
+                            html.Li('🌡️ Regime de Mercado'),
+                            html.Li('📡 Live Monitoring'),
+                        ], style={'fontSize': '14px', 'lineHeight': '1.8'}),
+                        html.P('Para gestão de risco', style={'fontSize': '12px', 'color': '#7f8c8d', 'marginTop': '10px', 'fontStyle': 'italic'})
+                    ], style={'width': '23%', 'display': 'inline-block', 'verticalAlign': 'top',
+                             'padding': '20px', 'backgroundColor': '#ffebee', 'borderRadius': '10px',
+                             'border': '2px solid #e74c3c'}),
+                ])
+            ], style={'backgroundColor': '#ffffff', 'padding': '25px', 'borderRadius': '15px', 
+                     'marginBottom': '40px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'}),
             
             # ALERTAS ATIVOS
             html.Div([
-                html.H3('🚨 Alertas Ativos', style={'color': '#e74c3c'}),
+                html.Div([
+                    html.Span('NÍVEL 4', style={'backgroundColor': '#e74c3c', 'color': 'white', 
+                             'padding': '5px 15px', 'borderRadius': '20px', 'fontSize': '12px',
+                             'fontWeight': 'bold', 'marginRight': '10px'}),
+                    html.Span('Alerts & Monitoramento', style={'color': '#7f8c8d', 'fontSize': '14px'})
+                ], style={'marginBottom': '10px'}),
+                html.H3('🚨 Sistema de Alertas Configurável', style={'color': '#e74c3c', 'marginTop': '0'}),
+                html.P('Monitora automaticamente métricas críticas e alerta quando limites são ultrapassados.',
+                      style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
                 *[controller.layout_view.create_insight_card(
                     alert['title'], alert['message'], alert['type']
                 ) for alert in metrics_adv.get('alerts', [])],
-                html.P('✅ Nenhum alerta crítico' if not metrics_adv.get('alerts') else '',
-                      style={'color': '#27ae60', 'fontWeight': 'bold'})
+                html.P('✅ Nenhum alerta crítico detectado' if not metrics_adv.get('alerts') else '',
+                      style={'color': '#27ae60', 'fontWeight': 'bold', 'fontSize': '16px', 'textAlign': 'center'})
             ], style={'marginBottom': '30px'}),
             
             # REGIME DE MERCADO
             html.Div([
-                html.H3('🌡️ Regime de Mercado Atual', style={'color': '#3498db'}),
+                html.Div([
+                    html.Span('NÍVEL 4', style={'backgroundColor': '#e74c3c', 'color': 'white', 
+                             'padding': '5px 15px', 'borderRadius': '20px', 'fontSize': '12px',
+                             'fontWeight': 'bold', 'marginRight': '10px'}),
+                    html.Span('Alerts & Monitoramento', style={'color': '#7f8c8d', 'fontSize': '14px'})
+                ], style={'marginBottom': '10px'}),
+                html.H3('🌡️ Detecção de Regime de Mercado', style={'color': '#3498db', 'marginTop': '0'}),
+                html.P('Identifica automaticamente se o mercado está em tendência, lateral ou volátil. Cada regime requer estratégia diferente.',
+                      style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
                 html.Div([
                     html.H4(f"📊 {metrics_adv.get('regime', {}).get('regime', 'N/A')}", 
                            style={'color': '#e74c3c', 'fontSize': '28px'}),
@@ -481,21 +573,45 @@ def render_tab_content(tab):
             ], style={'marginBottom': '30px'}),
             
             # GRÁFICO: Performance por Hora
-            html.H3('⏰ Performance por Hora do Dia (Nível 1)', style={'color': '#16a085'}),
+            html.Div([
+                html.Span('NÍVEL 1', style={'backgroundColor': '#3498db', 'color': 'white', 
+                         'padding': '5px 15px', 'borderRadius': '20px', 'fontSize': '12px',
+                         'fontWeight': 'bold', 'marginRight': '10px'}),
+                html.Span('Métricas Adicionais', style={'color': '#7f8c8d', 'fontSize': '14px'})
+            ], style={'marginBottom': '10px'}),
+            html.H3('⏰ Performance por Hora do Dia', style={'color': '#16a085', 'marginTop': '0'}),
+            html.P('Identifique os melhores horários para operar. Alta taxa de acerto em horários específicos pode indicar padrões de mercado.',
+                  style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
             dcc.Graph(
                 id='grafico-hourly',
                 figure=controller.chart_view.create_hourly_performance_chart(metrics_adv.get('hourly'))
             ),
             
             # GRÁFICO: Confusion Matrix
-            html.H3('🎯 Matriz de Confusão do Modelo (Nível 2)', style={'color': '#2980b9'}),
+            html.Div([
+                html.Span('NÍVEL 2', style={'backgroundColor': '#9b59b6', 'color': 'white', 
+                         'padding': '5px 15px', 'borderRadius': '20px', 'fontSize': '12px',
+                         'fontWeight': 'bold', 'marginRight': '10px'}),
+                html.Span('Análise de Modelo ML', style={'color': '#7f8c8d', 'fontSize': '14px'})
+            ], style={'marginBottom': '10px', 'marginTop': '30px'}),
+            html.H3('🎯 Matriz de Confusão do Modelo LSTM', style={'color': '#2980b9', 'marginTop': '0'}),
+            html.P('TP (True Positive) = Previu ALTA e subiu | FP (False Positive) = Previu ALTA mas caiu. Meta: Maximizar TP e TN.',
+                  style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
             dcc.Graph(
                 id='grafico-confusion-matrix',
                 figure=controller.chart_view.create_confusion_matrix_chart(metrics_adv.get('confusion_matrix'))
             ),
             
             # GRÁFICO: Monte Carlo
-            html.H3('🎲 Simulação Monte Carlo - 1000 Cenários (Nível 3)', style={'color': '#8e44ad'}),
+            html.Div([
+                html.Span('NÍVEL 3', style={'backgroundColor': '#27ae60', 'color': 'white', 
+                         'padding': '5px 15px', 'borderRadius': '20px', 'fontSize': '12px',
+                         'fontWeight': 'bold', 'marginRight': '10px'}),
+                html.Span('Backtesting Avançado', style={'color': '#7f8c8d', 'fontSize': '14px'})
+            ], style={'marginBottom': '10px', 'marginTop': '30px'}),
+            html.H3('🎲 Simulação Monte Carlo - 1000 Cenários', style={'color': '#8e44ad', 'marginTop': '0'}),
+            html.P('Embaralha aleatoriamente os resultados dos trades para estimar distribuição de retornos possíveis. Mostra o que PODE acontecer.',
+                  style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '10px'}),
             html.P([
                 f"📈 Probabilidade de lucro: {metrics_adv.get('monte_carlo', {}).get('prob_positive', 0):.1f}% | ",
                 f"📉 Risco de perda > 10%: {metrics_adv.get('monte_carlo', {}).get('prob_loss_10', 0):.1f}% | ",
@@ -507,20 +623,48 @@ def render_tab_content(tab):
             ),
             
             # GRÁFICO: Walk-Forward
-            html.H3('🚶 Walk-Forward Analysis (Nível 3)', style={'color': '#27ae60'}),
+            html.Div([
+                html.Span('NÍVEL 3', style={'backgroundColor': '#27ae60', 'color': 'white', 
+                         'padding': '5px 15px', 'borderRadius': '20px', 'fontSize': '12px',
+                         'fontWeight': 'bold', 'marginRight': '10px'}),
+                html.Span('Backtesting Avançado', style={'color': '#7f8c8d', 'fontSize': '14px'})
+            ], style={'marginBottom': '10px', 'marginTop': '30px'}),
+            html.H3('🚶 Walk-Forward Analysis', style={'color': '#27ae60', 'marginTop': '0'}),
+            html.P('Valida a estratégia em múltiplos períodos sequenciais. Se performance varia muito, modelo não é estável no tempo.',
+                  style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
             dcc.Graph(
                 id='grafico-walk-forward',
                 figure=controller.chart_view.create_walk_forward_chart(metrics_adv.get('walk_forward'))
             ),
             
             # GRÁFICO: Sensitivity Analysis
-            html.H3('🎚️ Análise de Sensibilidade TP/SL (Nível 3)', style={'color': '#e67e22'}),
-            html.P('Encontre a melhor combinação de Take Profit e Stop Loss para maximizar retorno.',
+            html.Div([
+                html.Span('NÍVEL 3', style={'backgroundColor': '#27ae60', 'color': 'white', 
+                         'padding': '5px 15px', 'borderRadius': '20px', 'fontSize': '12px',
+                         'fontWeight': 'bold', 'marginRight': '10px'}),
+                html.Span('Backtesting Avançado', style={'color': '#7f8c8d', 'fontSize': '14px'})
+            ], style={'marginBottom': '10px', 'marginTop': '30px'}),
+            html.H3('🎚️ Análise de Sensibilidade TP/SL', style={'color': '#e67e22', 'marginTop': '0'}),
+            html.P('Testa TODAS as combinações de Take Profit e Stop Loss. Verde = melhor retorno. Encontre a zona ótima para seus parâmetros.',
                   style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
             dcc.Graph(
                 id='grafico-sensitivity',
                 figure=controller.chart_view.create_sensitivity_heatmap(metrics_adv.get('sensitivity'))
             ),
+            
+            # FOOTER COM RESUMO
+            html.Div([
+                html.Hr(),
+                html.H4('📊 Resumo da Implementação', style={'color': '#2c3e50', 'textAlign': 'center'}),
+                html.P([
+                    '✅ ', html.Strong('12 análises diferentes'), ' implementadas | ',
+                    '✅ ', html.Strong('15+ gráficos interativos'), ' | ',
+                    '✅ ', html.Strong('Insights automáticos'), ' em tempo real | ',
+                    '✅ ', html.Strong('Sistema de alertas'), ' configurável'
+                ], style={'textAlign': 'center', 'fontSize': '16px', 'color': '#27ae60', 'marginTop': '15px'}),
+                html.P('🚀 Dashboard completo para análise profissional de trading algorítmico com LSTM',
+                      style={'textAlign': 'center', 'color': '#7f8c8d', 'marginTop': '10px', 'fontStyle': 'italic'})
+            ], style={'marginTop': '50px', 'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '10px'})
         ])
 
 
