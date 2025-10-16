@@ -100,6 +100,54 @@ class DashboardController:
         print("✅ [DEBUG Controller] Gráficos criados com sucesso")
         return (fig_capital, fig_previsao, fig_trades)
     
+    def get_advanced_charts(self) -> Dict:
+        """
+        Obtém gráficos avançados de análise
+        
+        Returns:
+            Dict com todos os gráficos avançados
+        """
+        if not self.data_loaded:
+            empty = self.chart_view.create_empty_chart()
+            return {
+                'drawdown': empty,
+                'prediction_error': empty,
+                'win_loss_dist': empty,
+                'cumulative_returns': empty,
+                'rolling_sharpe': empty,
+                'monthly_heatmap': empty
+            }
+        
+        df = self.model.get_dataframe()
+        
+        if df is None:
+            empty = self.chart_view.create_empty_chart("DataFrame não encontrado")
+            return {
+                'drawdown': empty,
+                'prediction_error': empty,
+                'win_loss_dist': empty,
+                'cumulative_returns': empty,
+                'rolling_sharpe': empty,
+                'monthly_heatmap': empty
+            }
+        
+        print(f"🔍 [DEBUG Controller] Criando gráficos avançados...")
+        
+        return {
+            'drawdown': self.chart_view.create_drawdown_chart(df) or 
+                       self.chart_view.create_empty_chart("Erro no drawdown"),
+            'prediction_error': self.chart_view.create_prediction_error_chart(df) or 
+                               self.chart_view.create_empty_chart("Erro no erro de previsão"),
+            'win_loss_dist': self.chart_view.create_win_loss_distribution(df) or 
+                            self.chart_view.create_empty_chart("Erro na distribuição"),
+            'cumulative_returns': self.chart_view.create_cumulative_returns_chart(df) or 
+                                 self.chart_view.create_empty_chart("Erro nos retornos"),
+            'rolling_sharpe': self.chart_view.create_rolling_sharpe_chart(df) or 
+                             self.chart_view.create_empty_chart("Erro no Sharpe"),
+            'monthly_heatmap': self.chart_view.create_monthly_returns_heatmap(df) or 
+                              self.chart_view.create_empty_chart("Erro no heatmap")
+        }
+    
     def get_metrics(self) -> Optional[Dict]:
         """
         Obtém as métricas calculadas

@@ -65,6 +65,13 @@ app.layout = html.Div(
                         selected_style={'padding': '10px', 'fontWeight': 'bold',
                                       'backgroundColor': '#e74c3c', 'color': 'white'}
                     ),
+                    dcc.Tab(
+                        label='📉 Análise Avançada',
+                        value='tab-analise-avancada',
+                        style={'padding': '10px', 'fontWeight': 'bold'},
+                        selected_style={'padding': '10px', 'fontWeight': 'bold',
+                                      'backgroundColor': '#9b59b6', 'color': 'white'}
+                    ),
                 ],
                 style={'marginTop': '20px', 'marginBottom': '20px'}
             ),
@@ -225,6 +232,128 @@ def render_tab_content(tab):
                 id='grafico-trades',
                 figure=fig_trades
             ),
+        ])
+    
+    elif tab == 'tab-analise-avancada':
+        # TAB 4: ANÁLISE AVANÇADA
+        # Obter gráficos avançados dinamicamente
+        advanced_charts = controller.get_advanced_charts()
+        
+        return html.Div([
+            html.H2('📉 Análise Avançada de Performance', 
+                    style={'color': '#9b59b6', 'marginBottom': '20px'}),
+            
+            html.P([
+                '🔍 Esta seção oferece análises aprofundadas para diagnosticar problemas ',
+                'e identificar oportunidades de melhoria no modelo e na estratégia.'
+            ], style={'fontSize': '16px', 'marginBottom': '30px', 'color': '#7f8c8d'}),
+            
+            # Seção 1: Análise de Risco
+            html.Div([
+                html.H3('💀 Análise de Risco', style={'color': '#e74c3c', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Drawdown: '), 
+                    'Mede o quanto o capital caiu desde o pico anterior. ',
+                    'Drawdowns profundos (>20%) indicam risco elevado. ',
+                    'Meta: Manter abaixo de 15%.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('1. Drawdown - Queda desde o Pico'),
+                dcc.Graph(
+                    id='grafico-drawdown',
+                    figure=advanced_charts['drawdown']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 2: Qualidade das Previsões
+            html.Div([
+                html.H3('🎯 Qualidade das Previsões do LSTM', style={'color': '#3498db', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Erro de Previsão: '), 
+                    'Se o modelo sempre prevê valores ACIMA do real (erro positivo), ',
+                    'há BIAS de otimismo. Se sempre prevê ABAIXO (erro negativo), é pessimista. ',
+                    'Meta: Erro próximo de zero com baixa dispersão.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('2. Erro de Previsão (Previsão - Real)'),
+                dcc.Graph(
+                    id='grafico-prediction-error',
+                    figure=advanced_charts['prediction_error']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 3: Distribuição de Resultados
+            html.Div([
+                html.H3('📊 Distribuição de Ganhos e Perdas', style={'color': '#27ae60', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Win/Loss Distribution: '), 
+                    'Mostra quantos trades tiveram X% de lucro/prejuízo. ',
+                    'Ideal: Ganhos maiores que perdas (assimetria positiva). ',
+                    'Problemas: Se perdas são maiores que ganhos em média.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('3. Histograma de Ganhos vs Perdas'),
+                dcc.Graph(
+                    id='grafico-win-loss',
+                    figure=advanced_charts['win_loss_dist']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 4: Retornos Cumulativos
+            html.Div([
+                html.H3('📈 Retornos Cumulativos', style={'color': '#16a085', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Retorno Acumulado (%): '), 
+                    'Visualiza o crescimento percentual do capital desde o início. ',
+                    'Ideal: Curva suave ascendente. ',
+                    'Problemas: Longos períodos planos ou quedas acentuadas.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('4. Evolução do Retorno Percentual'),
+                dcc.Graph(
+                    id='grafico-cumulative-returns',
+                    figure=advanced_charts['cumulative_returns']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 5: Sharpe Ratio Móvel
+            html.Div([
+                html.H3('⚡ Sharpe Ratio Móvel', style={'color': '#9b59b6', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Sharpe Ratio: '), 
+                    'Mede retorno ajustado ao risco. Sharpe > 1 = Bom, > 2 = Excelente, < 0 = Ruim. ',
+                    'Se oscila muito, a estratégia é inconsistente. ',
+                    'Meta: Manter acima de 1.0 consistentemente.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('5. Sharpe Ratio ao Longo do Tempo'),
+                dcc.Graph(
+                    id='grafico-rolling-sharpe',
+                    figure=advanced_charts['rolling_sharpe']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
+            
+            # Seção 6: Heatmap Mensal
+            html.Div([
+                html.H3('🔥 Performance Mensal', style={'color': '#e67e22', 'marginTop': '30px'}),
+                html.P([
+                    html.Strong('Heatmap Mensal: '), 
+                    'Identifica meses problemáticos (vermelho) e lucrativos (verde). ',
+                    'Útil para detectar sazonalidade ou períodos de mercado desfavoráveis.'
+                ], style={'fontSize': '14px', 'color': '#7f8c8d', 'marginBottom': '15px'}),
+                
+                controller.create_section_title('6. Retornos por Mês/Ano'),
+                dcc.Graph(
+                    id='grafico-monthly-heatmap',
+                    figure=advanced_charts['monthly_heatmap']
+                ),
+            ], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                     'borderRadius': '10px', 'marginBottom': '30px'}),
         ])
 
 
