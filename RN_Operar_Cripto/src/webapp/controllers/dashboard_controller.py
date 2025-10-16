@@ -157,6 +157,17 @@ class DashboardController:
         """
         return self.model.get_metrics() if self.metrics_calculated else None
     
+    def get_insights(self) -> Dict:
+        """
+        Obtém insights automáticos baseados nos dados
+        
+        Returns:
+            Dict com insights por categoria
+        """
+        if not self.data_loaded or not self.metrics_calculated:
+            return {}
+        return self.model.calculate_insights()
+    
     def get_layout_components(self):
         """
         Obtém todos os componentes do layout

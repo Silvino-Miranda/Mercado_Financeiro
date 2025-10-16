@@ -195,9 +195,42 @@ def render_tab_content(tab):
     
     elif tab == 'tab-resultados':
         # TAB 2: RESULTADOS
+        insights = controller.get_insights()
+        
+        # Criar cards de insights
+        insight_cards_risk = []
+        insight_cards_strategy = []
+        
+        if insights:
+            for insight in insights.get('risk', []):
+                insight_cards_risk.append(
+                    controller.layout_view.create_insight_card(
+                        insight['title'], insight['message'], insight['type']
+                    )
+                )
+            
+            for insight in insights.get('strategy', []):
+                insight_cards_strategy.append(
+                    controller.layout_view.create_insight_card(
+                        insight['title'], insight['message'], insight['type']
+                    )
+                )
+        
         return html.Div([
             html.H2('💰 Resultados da Estratégia', 
                     style={'color': '#27ae60', 'marginBottom': '20px'}),
+            
+            # Seção de Insights de Risco
+            html.Div([
+                html.H3('🎯 Insights de Risco', style={'color': '#e74c3c', 'marginBottom': '15px'}),
+                *insight_cards_risk
+            ], style={'marginBottom': '30px'}),
+            
+            # Seção de Insights de Estratégia
+            html.Div([
+                html.H3('📊 Insights de Performance', style={'color': '#3498db', 'marginBottom': '15px'}),
+                *insight_cards_strategy
+            ], style={'marginBottom': '30px'}),
             
             # Painel de Métricas
             metrics_panel,
