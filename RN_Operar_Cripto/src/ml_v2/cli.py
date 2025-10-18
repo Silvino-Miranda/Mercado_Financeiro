@@ -29,6 +29,7 @@ from src.ml_v2.metrics import compare_with_baselines, print_comparison
 from src.ml_v2.validation.walkforward import run_walkforward
 from src.ml_v2.validation.walkforward_classification import walkforward_classification, save_walkforward_results
 from src.ml_v2.backtest.engine import backtest_regression, print_backtest_report
+from src.ml_v2.backtest.directional_backtester import DirectionalBacktester
 
 # Seeds para reprodutibilidade
 os.environ["PYTHONHASHSEED"] = "0"
@@ -551,6 +552,121 @@ def cmd_walkforward_classifier(args):
     save_walkforward_results(results, results_path)
 
 
+def cmd_backtest_classifier(args):
+    """Comando: backtest_classifier - Backtest do classificador direcional."""
+    print("\n" + "="*80)
+    print("COMANDO: BACKTEST CLASSIFIER")
+    print("="*80 + "\n")
+    
+    # Load data
+    df = load_and_prepare_data(args.csv)
+    
+    # Filtrar período de backtest
+    if args.start:
+        df_backtest = df[df['Date'] >= args.start].reset_index(drop=True)
+        df_train = df[df['Date'] < args.start].reset_index(drop=True)
+    else:
+        # Usar últimos 15% como backtest (dados de teste)
+        n = len(df)
+        i_val = int(n * 0.85)
+        df_backtest = df.iloc[i_val:].reset_index(drop=True)
+        df_train = df.iloc[:i_val].reset_index(drop=True)
+    
+    print(f"📅 Período de backtest: {df_backtest['Date'].min()} a {df_backtest['Date'].max()}")
+    print(f"📊 Amostras de backtest: {len(df_backtest):,}")
+    
+    # Carregar último classificador
+    checkpoint_dir = Path("artifacts/checkpoints")
+    classifiers = sorted(checkpoint_dir.glob("classifier_*.keras"))
+    
+    if not classifiers:
+        print("❌ Nenhum classificador encontrado! Execute 'train_classifier' primeiro.")
+        return
+    
+    model_path = classifiers[-1]
+    print(f"🤖 Carregando classificador: {model_path.name}")
+    
+    # Carregar preprocessor correspondente
+    ts_model = model_path.stem.replace('classifier_', '')
+    preprocessor_path = checkpoint_dir / f"preprocessor_{ts_model}.pkl"
+    
+    if not preprocessor_path.exists():
+        print(f"❌ Preprocessor não encontrado: {preprocessor_path}")
+        print("Execute 'train_classifier' novamente para salvar o preprocessor.")
+        return
+    
+    import pickle
+    with open(preprocessor_path, 'rb') as f:
+        preprocessor = pickle.load(f)
+    
+    print(f"✅ Preprocessor carregado: {preprocessor_path.name}")
+    
+    # Preprocessar dados de backtest
+    X_backtest, y_backtest = preprocessor.transform(df_backtest)
+    
+    print(f"🎯 Sequências para backtest: {X_backtest.shape}")
+    
+    # Carregar modelo e fazer predições
+    model = keras.models.load_model(model_path)
+    
+    print("🔮 Gerando predições...")
+    probabilities = model.predict(X_backtest, verbose=0)
+    predictions = np.argmax(probabilities, axis=1)
+    
+    # Alinhar dados para backtest
+    # X_backtest tem menos samples que df_backtest devido ao lookback
+    lookback = preprocessor.lookback
+    df_bt = df_backtest.iloc[lookback:].reset_index(drop=True)
+    
+    print(f"📊 Dados alinhados para backtest: {len(df_bt):,} samples")
+    
+    # Verificar alinhamento
+    if len(df_bt) != len(predictions):
+        print(f"⚠️  Alinhamento: df_bt={len(df_bt)}, predictions={len(predictions)}")
+        min_len = min(len(df_bt), len(predictions))
+        df_bt = df_bt.iloc[:min_len]
+        predictions = predictions[:min_len]
+        probabilities = probabilities[:min_len]
+    
+    # Configurar backtester
+    backtester = DirectionalBacktester(
+        initial_capital=getattr(args, 'capital', 100000.0),
+        fee_bps=getattr(args, 'fee_bps', 10.0),
+        slippage_bps=getattr(args, 'slippage_bps', 5.0),
+        min_confidence=getattr(args, 'min_confidence', 0.6),
+        position_size=getattr(args, 'position_size', 0.95)
+    )
+    
+    # Executar backtest
+    history_df = backtester.run_backtest(df_bt, predictions, probabilities)
+    
+    # Salvar histórico (formato compatível com dashboard)
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    output_path = f"artifacts/equity/capital_history-CLASSIFIER_{ts}.csv"
+    backtester.save_history(history_df, output_path)
+    
+    # Também salvar em formato padrão para comparação
+    history_standard = f"artifacts/equity/backtest_classifier_{ts}.csv"
+    history_df.to_csv(history_standard, index=False)
+    
+    print(f"\n✅ Histórico do dashboard salvo: {output_path}")
+    print(f"✅ Histórico padrão salvo: {history_standard}")
+    
+    # Estatísticas resumidas
+    if len(history_df) > 0:
+        capital_inicial = float(history_df['Capital'].iloc[0])
+        capital_final = float(history_df['Capital'].iloc[-1])
+        retorno_total = (capital_final - capital_inicial) / capital_inicial
+        num_trades = len(history_df[history_df['Status'] == 'Entrada'])
+        
+        print(f"\n📈 RESUMO DO BACKTEST:")
+        print(f"   Capital inicial: ${capital_inicial:,.2f}")
+        print(f"   Capital final: ${capital_final:,.2f}")
+        print(f"   Retorno total: {retorno_total:.2%}")
+        print(f"   Número de trades: {num_trades}")
+        print(f"   Arquivo para dashboard: {output_path}")
+
+
 def main():
     """Main CLI."""
     setup_tensorflow()
@@ -626,6 +742,16 @@ def main():
     parser_wfc.add_argument("--units", type=int, default=64, help="LSTM units")
     parser_wfc.add_argument("--dropout", type=float, default=0.4, help="Dropout rate")
     
+    # === BACKTEST CLASSIFIER ===
+    parser_btc = subparsers.add_parser("backtest_classifier", help="Backtest do classificador")
+    parser_btc.add_argument("--csv", required=True, help="Caminho do CSV")
+    parser_btc.add_argument("--start", type=str, default=None, help="Data início (YYYY-MM-DD)")
+    parser_btc.add_argument("--capital", type=float, default=100000.0, help="Capital inicial")
+    parser_btc.add_argument("--fee-bps", type=float, default=10.0, help="Taxa exchange (bps)")
+    parser_btc.add_argument("--slippage-bps", type=float, default=5.0, help="Slippage (bps)")
+    parser_btc.add_argument("--min-confidence", type=float, default=0.6, help="Confiança mínima (0-1)")
+    parser_btc.add_argument("--position-size", type=float, default=0.95, help="Fração do capital (0-1)")
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -647,6 +773,8 @@ def main():
         cmd_evaluate_classifier(args)
     elif args.command == "walkforward_classifier":
         cmd_walkforward_classifier(args)
+    elif args.command == "backtest_classifier":
+        cmd_backtest_classifier(args)
 
 
 if __name__ == "__main__":
