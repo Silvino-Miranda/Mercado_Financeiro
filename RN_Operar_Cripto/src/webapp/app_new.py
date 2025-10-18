@@ -15,7 +15,11 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 
 # Importar páginas e componentes
-from src.webapp.modules.dashboard.pages import overview_page, overview_component
+from src.webapp.modules.dashboard.pages import (
+    overview_page, overview_component,
+    backtest_page, backtest_component,
+    comparison_page, comparison_component
+)
 from src.webapp.shared.config import AppConfig
 
 
@@ -56,20 +60,16 @@ app.layout = dbc.Container([
                     active_label_class_name="fw-bold text-primary"
                 ),
                 dbc.Tab(
-                    html.Div([
-                        html.H3("🔄 Backtest", className="text-center mt-5"),
-                        html.P("Em desenvolvimento...", className="text-muted text-center")
-                    ], className="p-5"),
+                    backtest_page.layout,
                     label="🔄 Backtest",
-                    tab_id="tab-backtest"
+                    tab_id="tab-backtest",
+                    active_label_class_name="fw-bold text-primary"
                 ),
                 dbc.Tab(
-                    html.Div([
-                        html.H3("📊 Comparação", className="text-center mt-5"),
-                        html.P("Em desenvolvimento...", className="text-muted text-center")
-                    ], className="p-5"),
+                    comparison_page.layout,
                     label="📊 Comparação",
-                    tab_id="tab-comparison"
+                    tab_id="tab-comparison",
+                    active_label_class_name="fw-bold text-primary"
                 )
             ], id="main-tabs", active_tab="tab-overview")
         ])
@@ -98,6 +98,8 @@ app.layout = dbc.Container([
 
 # Registrar callbacks das páginas
 overview_component.register_callbacks(app)
+backtest_component.register_callbacks(app)
+comparison_component.register_callbacks(app)
 
 
 # Executar servidor
@@ -113,8 +115,8 @@ if __name__ == '__main__':
     ╠══════════════════════════════════════════════════════════╣
     ║  📊 Pages:                                               ║
     ║     - Visão Geral (Overview) ✅                          ║
-    ║     - Backtest 🔜                                        ║
-    ║     - Comparação 🔜                                      ║
+    ║     - Backtest ✅                                        ║
+    ║     - Comparação ✅                                      ║
     ╚══════════════════════════════════════════════════════════╝
     """)
     
