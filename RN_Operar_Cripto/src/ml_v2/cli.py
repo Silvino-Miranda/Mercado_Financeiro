@@ -274,6 +274,134 @@ def cmd_train_classifier(args):
     print(f"✅ Preprocessor salvo em: {preprocessor_path}")
 
 
+def cmd_train_improved_classifier(args):
+    """Comando: train_improved_classifier - Treina modelo aprimorado com todas as melhorias."""
+    print("\n" + "="*80)
+    print("COMANDO: TRAIN IMPROVED CLASSIFIER (TODAS AS MELHORIAS)")
+    print("="*80 + "\n")
+    
+    # Imports aqui para evitar problemas de módulo
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    
+    from models.improved_directional_model import build_improved_directional_lstm, get_aggressive_class_weights, get_improved_callbacks
+    from preprocess.improved_preprocessor import ImprovedDirectionalPreprocessor
+    import tensorflow as tf
+    from datetime import datetime
+    
+    print("🚀 Iniciando treinamento do classificador APRIMORADO...")
+    
+    # Carregar dados
+    df = pd.read_csv(args.csv)
+    print(f"📊 Dataset carregado: {len(df):,} samples, {len(df.columns)} features")
+    
+    # Configurar preprocessor aprimorado
+    preprocessor = ImprovedDirectionalPreprocessor(
+        lookback_window=getattr(args, 'lookback', 60),
+        horizon_periods=getattr(args, 'horizon', 24),  # 12h ao invés de 6h
+        threshold_multiplier=getattr(args, 'threshold', 1.0),  # ATR-based
+        adaptive_threshold=True,
+        use_advanced_features=True,
+        balance_method="adaptive"
+    )
+    
+    # Preprocessar dados
+    print("\n🔧 Preprocessando com melhorias avançadas...")
+    X, y = preprocessor.fit_transform(df)
+    
+    # Split temporal
+    split_idx = int(len(X) * 0.8)
+    X_train, X_val = X[:split_idx], X[split_idx:]
+    y_train, y_val = y[:split_idx], y[split_idx:]
+    
+    print(f"🎯 Sequências de treino: {X_train.shape}")
+    print(f"🎯 Sequências de validação: {X_val.shape}")
+    
+    # Class weights agressivos
+    class_weights = get_aggressive_class_weights(y_train, strategy="aggressive")
+    
+    # Construir modelo aprimorado
+    model = build_improved_directional_lstm(
+        input_shape=(X_train.shape[1], X_train.shape[2]),
+        lstm_units=getattr(args, 'lstm_units', 128),
+        lstm_layers=getattr(args, 'lstm_layers', 3),
+        dropout=getattr(args, 'dropout', 0.4),
+        learning_rate=getattr(args, 'learning_rate', 1e-3),
+        use_focal_loss=getattr(args, 'use_focal_loss', True)
+    )
+    
+    # Callbacks aprimorados
+    patience = getattr(args, 'patience', 20)
+    callbacks = get_improved_callbacks(
+        patience_early=patience,
+        patience_lr=patience // 2
+    )
+    
+    # Salvar checkpoints
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    checkpoint_path = f"artifacts/checkpoints/improved_classifier_{timestamp}"
+    
+    callbacks.append(tf.keras.callbacks.ModelCheckpoint(
+        f"{checkpoint_path}_best.keras",
+        monitor='val_accuracy',
+        save_best_only=True,
+        verbose=1
+    ))
+    
+    # Treinar
+    print("\n🤖 Iniciando treinamento aprimorado...")
+    history = model.fit(
+        X_train, y_train,
+        validation_data=(X_val, y_val),
+        epochs=getattr(args, 'epochs', 100),
+        batch_size=getattr(args, 'batch_size', 64),
+        class_weight=class_weights,
+        callbacks=callbacks,
+        verbose=1
+    )
+    
+    # Salvar modelo e preprocessor
+    model_path = f"{checkpoint_path}_final.keras"
+    preprocessor_path = f"artifacts/checkpoints/improved_preprocessor_{timestamp}.pkl"
+    
+    model.save(model_path)
+    preprocessor.save(preprocessor_path)
+    
+    # Avaliar performance final
+    print("\n📊 Avaliação final:")
+    val_loss, val_acc = model.evaluate(X_val, y_val, verbose=0)
+    
+    # Predições para métricas detalhadas
+    y_pred = model.predict(X_val)
+    y_pred_classes = np.argmax(y_pred, axis=1)
+    
+    from sklearn.metrics import classification_report, balanced_accuracy_score
+    
+    balanced_acc = balanced_accuracy_score(y_val, y_pred_classes)
+    
+    print(f"   Accuracy: {val_acc:.4f}")
+    print(f"   Balanced Accuracy: {balanced_acc:.4f}")
+    print(f"   Loss: {val_loss:.4f}")
+    
+    print(f"\n✅ Modelo aprimorado salvo em: {model_path}")
+    print(f"✅ Preprocessor salvo em: {preprocessor_path}")
+    
+    # Relatório por classe
+    label_names = ['BAIXA', 'LATERAL', 'ALTA']
+    report = classification_report(y_val, y_pred_classes, target_names=label_names)
+    print(f"\n📈 Relatório por classe:\n{report}")
+    
+    # Salvar histórico
+    history_path = f"artifacts/logs/improved_classifier_history_{timestamp}.json"
+    with open(history_path, 'w') as f:
+        json.dump({k: [float(v) for v in vals] for k, vals in history.history.items()}, f, indent=2)
+    
+    print(f"✅ Histórico salvo em: {history_path}")
+    
+    return history, model, preprocessor
+
+
 def cmd_evaluate(args):
     """Comando: evaluate - Avalia modelo vs baselines."""
     print("\n" + "="*80)
@@ -742,6 +870,21 @@ def main():
     parser_wfc.add_argument("--units", type=int, default=64, help="LSTM units")
     parser_wfc.add_argument("--dropout", type=float, default=0.4, help="Dropout rate")
     
+    # === TRAIN IMPROVED CLASSIFIER ===
+    parser_tic = subparsers.add_parser("train_improved_classifier", help="Treina classificador APRIMORADO")
+    parser_tic.add_argument("--csv", required=True, help="Caminho do CSV")
+    parser_tic.add_argument("--lookback", type=int, default=60, help="Janela temporal")
+    parser_tic.add_argument("--horizon", type=int, default=24, help="Horizontes futuros (12h)")
+    parser_tic.add_argument("--threshold", type=float, default=1.0, help="Multiplicador ATR threshold")
+    parser_tic.add_argument("--epochs", type=int, default=100, help="Épocas máximas")
+    parser_tic.add_argument("--batch-size", type=int, default=64, help="Batch size")
+    parser_tic.add_argument("--lstm-units", type=int, default=128, help="LSTM units primeira camada")
+    parser_tic.add_argument("--lstm-layers", type=int, default=3, help="Número camadas LSTM")
+    parser_tic.add_argument("--dropout", type=float, default=0.4, help="Dropout rate")
+    parser_tic.add_argument("--learning-rate", type=float, default=1e-3, help="Learning rate inicial")
+    parser_tic.add_argument("--patience", type=int, default=20, help="Early stopping patience")
+    parser_tic.add_argument("--use-focal-loss", action="store_true", default=True, help="Usar Focal Loss")
+
     # === BACKTEST CLASSIFIER ===
     parser_btc = subparsers.add_parser("backtest_classifier", help="Backtest do classificador")
     parser_btc.add_argument("--csv", required=True, help="Caminho do CSV")
@@ -769,6 +912,8 @@ def main():
         cmd_backtest(args)
     elif args.command == "train_classifier":
         cmd_train_classifier(args)
+    elif args.command == "train_improved_classifier":
+        cmd_train_improved_classifier(args)
     elif args.command == "evaluate_classifier":
         cmd_evaluate_classifier(args)
     elif args.command == "walkforward_classifier":
