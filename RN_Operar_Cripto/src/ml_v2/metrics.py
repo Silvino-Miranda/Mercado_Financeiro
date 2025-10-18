@@ -20,7 +20,7 @@ def mae_mape_rmse_usd(y_true_usd: np.ndarray, y_pred_usd: np.ndarray) -> Dict[st
         Dict com mae_usd, rmse_usd, mape_pct
     """
     mae = mean_absolute_error(y_true_usd, y_pred_usd)
-    rmse = mean_squared_error(y_true_usd, y_pred_usd, squared=False)
+    rmse = np.sqrt(mean_squared_error(y_true_usd, y_pred_usd))
     
     # MAPE: cuidado com divisão por zero
     mape = float(

@@ -16,9 +16,18 @@ import pandas as pd
 from tensorflow import keras
 
 from src.ml_v2.preprocess import DataPreprocessor
+from src.ml_v2.preprocess_classification import DirectionalPreprocessor
 from src.ml_v2.models.lstm_model import build_lstm, get_callbacks
+from src.ml_v2.models.directional_model import (
+    build_directional_lstm, 
+    get_directional_callbacks, 
+    calculate_class_weights,
+    evaluate_directional_model,
+    print_directional_results
+)
 from src.ml_v2.metrics import compare_with_baselines, print_comparison
 from src.ml_v2.validation.walkforward import run_walkforward
+from src.ml_v2.validation.walkforward_classification import walkforward_classification, save_walkforward_results
 from src.ml_v2.backtest.engine import backtest_regression, print_backtest_report
 
 # Seeds para reprodutibilidade
@@ -156,6 +165,114 @@ def cmd_train(args):
     print(f"✅ Histórico salvo em: {history_path}")
 
 
+def cmd_train_classifier(args):
+    """Comando: train_classifier - Treina modelo de classificação direcional."""
+    print("\n" + "="*80)
+    print("COMANDO: TRAIN CLASSIFIER (DIRECCIONAL)")
+    print("="*80 + "\n")
+    
+    # Load data
+    df = load_and_prepare_data(args.csv)
+    feature_cols = get_feature_cols(df)
+    
+    print(f"📊 Dataset carregado: {len(df):,} samples, {len(feature_cols)} features")
+    
+    # Split temporal
+    n = len(df)
+    i_train = int(n * 0.70)
+    i_val = int(n * 0.85)
+    
+    df_train = df.iloc[:i_train]
+    df_val = df.iloc[i_train:i_val]
+    df_test = df.iloc[i_val:]
+    
+    print(f"📊 Split: Train={len(df_train):,}, Val={len(df_val):,}, Test={len(df_test):,}")
+    
+    # Preprocessamento direcional
+    horizon = getattr(args, 'horizon', 12)  # 6 horas
+    threshold = getattr(args, 'threshold', 0.5)  # 0.5%
+    
+    preprocessor = DirectionalPreprocessor(
+        feature_cols=feature_cols,
+        price_col="Close",
+        lookback=args.lookback,
+        horizon=horizon,
+        threshold_pct=threshold
+    )
+    
+    # Fit e transform
+    X_train, y_train = preprocessor.fit_transform(df_train)
+    X_val, y_val = preprocessor.transform(df_val)
+    
+    print(f"\n🎯 Sequências de treino: {X_train.shape}")
+    print(f"🎯 Sequências de validação: {X_val.shape}")
+    
+    # Class weights
+    class_weights = calculate_class_weights(y_train)
+    
+    # Construir modelo
+    input_shape = (X_train.shape[1], X_train.shape[2])
+    
+    model = build_directional_lstm(
+        input_shape=input_shape,
+        n_classes=3,
+        lstm_units=getattr(args, 'units', 64),
+        dropout=getattr(args, 'dropout', 0.3),
+        learning_rate=getattr(args, 'lr', 1e-3)
+    )
+    
+    print(f"\n🤖 Modelo criado: {model.count_params():,} parâmetros")
+    model.summary()
+    
+    # Callbacks
+    callbacks = get_directional_callbacks(
+        patience_early=15,
+        patience_lr=7,
+        monitor='val_accuracy'
+    )
+    
+    # Treinamento
+    print("\n🔥 Iniciando treinamento...")
+    
+    history = model.fit(
+        X_train, y_train,
+        validation_data=(X_val, y_val),
+        epochs=getattr(args, 'epochs', 100),
+        batch_size=getattr(args, 'batch_size', 64),
+        callbacks=callbacks,
+        class_weight=class_weights,
+        verbose=1
+    )
+    
+    # Avaliação rápida
+    print("\n📊 Avaliação final no conjunto de validação:")
+    
+    results = evaluate_directional_model(model, X_val, y_val)
+    print_directional_results(results)
+    
+    # Salvar modelo
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    model_path = f"artifacts/checkpoints/classifier_{ts}.keras"
+    model.save(model_path)
+    
+    print(f"\n✅ Classificador salvo em: {model_path}")
+    
+    # Salvar histórico
+    history_path = f"artifacts/logs/classifier_history_{ts}.json"
+    with open(history_path, 'w') as f:
+        json.dump({k: [float(v) for v in vals] for k, vals in history.history.items()}, f, indent=2)
+    
+    print(f"✅ Histórico salvo em: {history_path}")
+    
+    # Salvar preprocessor
+    preprocessor_path = f"artifacts/checkpoints/preprocessor_{ts}.pkl"
+    import pickle
+    with open(preprocessor_path, 'wb') as f:
+        pickle.dump(preprocessor, f)
+    
+    print(f"✅ Preprocessor salvo em: {preprocessor_path}")
+
+
 def cmd_evaluate(args):
     """Comando: evaluate - Avalia modelo vs baselines."""
     print("\n" + "="*80)
@@ -197,8 +314,18 @@ def cmd_evaluate(args):
     y_pred_scaled = model.predict(X_test, verbose=0).ravel()
     y_pred_usd = preprocessor.inverse_target(y_pred_scaled)
     
+    print(f"DEBUG: y_pred_usd shape: {y_pred_usd.shape}")
+    print(f"DEBUG: y_pred_usd primeiros 5 valores: {y_pred_usd[:5]}")
+    print(f"DEBUG: df_test shape: {df_test.shape}")
+    
+    # Obter y_true (Close real)
+    y_true_usd = df_test['Close'].values[args.lookback:]
+    
+    print(f"DEBUG: y_true_usd shape: {y_true_usd.shape}")
+    print(f"DEBUG: y_true_usd primeiros 5 valores: {y_true_usd[:5]}")
+    
     # Comparar com baselines
-    results = compare_with_baselines(df_test, y_pred_usd, y_pred_usd, args.lookback)
+    results = compare_with_baselines(df_test, y_true_usd, y_pred_usd, args.lookback)
     
     # Imprimir
     print_comparison(results)
@@ -318,6 +445,112 @@ def cmd_backtest(args):
     print_backtest_report(metrics)
 
 
+def cmd_evaluate_classifier(args):
+    """Comando: evaluate_classifier - Avalia classificador direcional."""
+    print("\n" + "="*80)
+    print("COMANDO: EVALUATE CLASSIFIER")
+    print("="*80 + "\n")
+    
+    # Load data
+    df = load_and_prepare_data(args.csv)
+    feature_cols = get_feature_cols(df)
+    
+    # Split (usar apenas test set)
+    n = len(df)
+    i_val = int(n * 0.85)
+    df_test = df.iloc[i_val:]
+    
+    print(f"📊 Dataset test: {len(df_test):,} samples")
+    
+    # Carregar último classificador
+    checkpoint_dir = Path("artifacts/checkpoints")
+    classifiers = sorted(checkpoint_dir.glob("classifier_*.keras"))
+    
+    if not classifiers:
+        print("❌ Nenhum classificador encontrado! Execute 'train_classifier' primeiro.")
+        return
+    
+    model_path = classifiers[-1]
+    print(f"Carregando classificador: {model_path.name}")
+    
+    # Carregar preprocessor correspondente
+    ts_model = model_path.stem.replace('classifier_', '')  # timestamp completo
+    preprocessor_path = checkpoint_dir / f"preprocessor_{ts_model}.pkl"
+    
+    if not preprocessor_path.exists():
+        print(f"❌ Preprocessor não encontrado: {preprocessor_path}")
+        print("Execute 'train_classifier' novamente para salvar o preprocessor.")
+        return
+    
+    import pickle
+    with open(preprocessor_path, 'rb') as f:
+        preprocessor = pickle.load(f)
+    
+    print(f"✅ Preprocessor carregado: {preprocessor_path.name}")
+    
+    # Preprocessar dados de teste
+    X_test, y_test = preprocessor.transform(df_test)
+    
+    print(f"🎯 Sequências de teste: {X_test.shape}")
+    
+    # Carregar modelo
+    model = keras.models.load_model(model_path)
+    
+    # Avaliar
+    results = evaluate_directional_model(model, X_test, y_test)
+    
+    # Imprimir resultados
+    print_directional_results(results)
+    
+    # Salvar resultados
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    results_path = f"artifacts/metrics/classifier_eval_{ts}.json"
+    with open(results_path, 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    print(f"\n✅ Resultados salvos em: {results_path}")
+
+
+def cmd_walkforward_classifier(args):
+    """Comando: walkforward_classifier - Walk-forward validation do classificador."""
+    print("\n" + "="*80)
+    print("COMANDO: WALK-FORWARD CLASSIFIER")
+    print("="*80 + "\n")
+    
+    # Load data
+    df = load_and_prepare_data(args.csv)
+    feature_cols = get_feature_cols(df)
+    
+    print(f"📊 Dataset: {len(df):,} samples, {len(feature_cols)} features")
+    
+    # Parâmetros
+    model_params = {
+        'lookback': args.lookback,
+        'horizon': getattr(args, 'horizon', 6),
+        'threshold': getattr(args, 'threshold', 0.3),
+        'epochs': getattr(args, 'epochs', 20),
+        'batch_size': getattr(args, 'batch_size', 64),
+        'units': getattr(args, 'units', 64),
+        'dropout': getattr(args, 'dropout', 0.4),
+        'lr': getattr(args, 'lr', 1e-3)
+    }
+    
+    # Executar walk-forward
+    results = walkforward_classification(
+        df=df,
+        feature_cols=feature_cols,
+        n_folds=getattr(args, 'folds', 3),
+        train_size_months=getattr(args, 'train_months', 12),
+        test_size_months=getattr(args, 'test_months', 3),
+        **model_params
+    )
+    
+    # Salvar resultados
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    results_path = f"artifacts/metrics/walkforward_classifier_{ts}.json"
+    save_walkforward_results(results, results_path)
+
+
 def main():
     """Main CLI."""
     setup_tensorflow()
@@ -363,6 +596,36 @@ def main():
     parser_bt.add_argument("--threshold-bps", type=float, default=20.0, help="Threshold entrada (bps)")
     parser_bt.add_argument("--capital", type=float, default=10000.0, help="Capital inicial")
     
+    # === TRAIN CLASSIFIER ===
+    parser_tc = subparsers.add_parser("train_classifier", help="Treina classificador direcional")
+    parser_tc.add_argument("--csv", required=True, help="Caminho do CSV")
+    parser_tc.add_argument("--lookback", type=int, default=60, help="Janela temporal")
+    parser_tc.add_argument("--horizon", type=int, default=12, help="Períodos futuros (6h = 12×30min)")
+    parser_tc.add_argument("--threshold", type=float, default=0.5, help="Threshold ALTA/BAIXA (%)")
+    parser_tc.add_argument("--epochs", type=int, default=100, help="Épocas de treino")
+    parser_tc.add_argument("--batch-size", type=int, default=64, help="Batch size")
+    parser_tc.add_argument("--units", type=int, default=64, help="LSTM units")
+    parser_tc.add_argument("--dropout", type=float, default=0.3, help="Dropout rate")
+    parser_tc.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    
+    # === EVALUATE CLASSIFIER ===
+    parser_ec = subparsers.add_parser("evaluate_classifier", help="Avalia classificador direcional")
+    parser_ec.add_argument("--csv", required=True, help="Caminho do CSV")
+    
+    # === WALKFORWARD CLASSIFIER ===
+    parser_wfc = subparsers.add_parser("walkforward_classifier", help="Walk-forward do classificador")
+    parser_wfc.add_argument("--csv", required=True, help="Caminho do CSV")
+    parser_wfc.add_argument("--lookback", type=int, default=60, help="Janela temporal")
+    parser_wfc.add_argument("--folds", type=int, default=3, help="Número de folds")
+    parser_wfc.add_argument("--train-months", type=int, default=12, help="Meses de treino")
+    parser_wfc.add_argument("--test-months", type=int, default=3, help="Meses de teste")
+    parser_wfc.add_argument("--horizon", type=int, default=6, help="Períodos futuros")
+    parser_wfc.add_argument("--threshold", type=float, default=0.3, help="Threshold %")
+    parser_wfc.add_argument("--epochs", type=int, default=20, help="Épocas por fold")
+    parser_wfc.add_argument("--batch-size", type=int, default=64, help="Batch size")
+    parser_wfc.add_argument("--units", type=int, default=64, help="LSTM units")
+    parser_wfc.add_argument("--dropout", type=float, default=0.4, help="Dropout rate")
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -378,6 +641,12 @@ def main():
         cmd_walkforward(args)
     elif args.command == "backtest":
         cmd_backtest(args)
+    elif args.command == "train_classifier":
+        cmd_train_classifier(args)
+    elif args.command == "evaluate_classifier":
+        cmd_evaluate_classifier(args)
+    elif args.command == "walkforward_classifier":
+        cmd_walkforward_classifier(args)
 
 
 if __name__ == "__main__":

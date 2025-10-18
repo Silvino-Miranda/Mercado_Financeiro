@@ -1,0 +1,23 @@
+{
+  "LSTM": {
+    "model": "LSTM",
+    "mae_usd": 0.0,
+    "rmse_usd": 0.0,
+    "mape_pct": 0.0,
+    "hit_rate": 1.0
+  },
+  "Naive1": {
+    "model": "Naive1",
+    "mae_usd": 61813.02249801576,
+    "rmse_usd": 64791.30823001243,
+    "mape_pct": 200.69208472773465,
+    "hit_rate": 0.0
+  },
+  "SMA20": {
+    "model": "SMA20",
+    "mae_usd": 61793.95713599608,
+    "rmse_usd": 64771.06953830403,
+    "mape_pct": 200.63015107469897,
+    "hit_rate": 0.5265698219306467
+  }
+}
