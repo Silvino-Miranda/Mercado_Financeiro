@@ -61,16 +61,15 @@ class ModelBuilderAdapter:
         """
         config = ModelConfig(
             model_type='lstm',
-            input_shape=input_shape,
+            lookback=input_shape[0],
             lstm_units=lstm_units,
             lstm_layers=2,
             dropout=dropout,
-            learning_rate=learning_rate,
-            n_classes=None  # Regressão
+            learning_rate=learning_rate
         )
         
         factory = ModelFactory()
-        return factory.create_model(config)
+        return factory.create_model(config, n_features=input_shape[1])
     
     @staticmethod
     def build_directional_lstm(
@@ -95,16 +94,15 @@ class ModelBuilderAdapter:
         """
         config = ModelConfig(
             model_type='directional',
-            input_shape=input_shape,
+            lookback=input_shape[0],
             lstm_units=lstm_units,
             lstm_layers=2,
             dropout=dropout,
-            learning_rate=learning_rate,
-            n_classes=n_classes
+            learning_rate=learning_rate
         )
         
         factory = ModelFactory()
-        return factory.create_model(config)
+        return factory.create_model(config, n_features=input_shape[1], n_classes=n_classes)
     
     @staticmethod
     def build_improved_directional_lstm(
@@ -131,18 +129,20 @@ class ModelBuilderAdapter:
         """
         config = ModelConfig(
             model_type='improved_directional',
-            input_shape=input_shape,
+            lookback=input_shape[0],
             lstm_units=lstm_units,
             lstm_layers=lstm_layers,
             dropout=dropout,
-            learning_rate=learning_rate,
-            n_classes=3,
-            use_batch_norm=True,
-            use_focal_loss=use_focal_loss
+            learning_rate=learning_rate
         )
         
         factory = ModelFactory()
-        return factory.create_model(config)
+        return factory.create_model(
+            config, 
+            n_features=input_shape[1], 
+            n_classes=3,
+            use_focal_loss=use_focal_loss
+        )
     
     @staticmethod
     def get_callbacks(
@@ -170,7 +170,7 @@ class ModelBuilderAdapter:
             Lista de callbacks
         """
         factory = ModelFactory()
-        return factory.create_callbacks(
+        return factory.get_callbacks(
             patience_early=patience_early,
             patience_lr=patience_lr,
             monitor=monitor,
@@ -198,7 +198,7 @@ class ModelBuilderAdapter:
             Lista de callbacks
         """
         factory = ModelFactory()
-        return factory.create_callbacks(
+        return factory.get_callbacks(
             patience_early=patience_early,
             patience_lr=patience_lr,
             monitor=monitor,

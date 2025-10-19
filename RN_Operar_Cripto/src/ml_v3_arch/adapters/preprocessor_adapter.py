@@ -218,7 +218,7 @@ class DataPreprocessorAdapter:
             )
         
         # Verificar tamanho mínimo
-        min_samples = self.lookback + 10  # Lookback + mínimo para sequências
+        min_samples = self.lookback + 1  # Apenas lookback + 1 para criar ao menos 1 sequência
         if len(df) < min_samples:
             raise ValueError(
                 f"DataFrame muito pequeno em {context}(): "
