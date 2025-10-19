@@ -1,0 +1,21 @@
+{
+  "config": {
+    "initial_capital": 10000.0,
+    "fee_bps": 10.0,
+    "slippage_bps": 5.0,
+    "threshold_bps": 20.0
+  },
+  "performance": {
+    "final_capital": 7142.081388178011,
+    "total_return": -0.28579186118219885,
+    "buy_hold_return": 0.6918565970237637,
+    "alpha": -0.9776484582059626,
+    "sharpe_ratio": -1.344899054793553,
+    "max_drawdown": -0.32827456167507707,
+    "volatility": 0.0012280533165599918
+  },
+  "trading": {
+    "n_trades": 322,
+    "trades_per_day": 0.7242736644798501
+  }
+}
