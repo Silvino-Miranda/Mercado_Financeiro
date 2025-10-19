@@ -6,13 +6,16 @@ Princípios aplicados:
 - Validation: Validações extensivas
 - Error handling: Tratamento de erros específicos
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from pathlib import Path
 from dataclasses import dataclass
 import warnings
 
-import pandas as pd
-import numpy as np
+# Lazy imports para evitar RecursionError do NumPy
+# pandas e numpy são importados dentro dos métodos que os usam
+if TYPE_CHECKING:
+    import pandas as pd
+    import numpy as np
 
 
 @dataclass
@@ -57,7 +60,7 @@ class DataLoader:
         """
         self.config = config
     
-    def load(self, file_path: Path, verbose: int = 1) -> pd.DataFrame:
+    def load(self, file_path: Path, verbose: int = 1):
         """
         Carrega dados de CSV com validações.
         
@@ -72,6 +75,9 @@ class DataLoader:
             DataValidationError: Se dados inválidos
             FileNotFoundError: Se arquivo não existe
         """
+        # Lazy import para evitar RecursionError
+        import pandas as pd
+        
         if verbose > 0:
             print("\n" + "="*80)
             print("📂 DATA LOADER - Carregando Dados")
@@ -102,8 +108,16 @@ class DataLoader:
         # 3. Validar colunas
         self._validate_columns(df, verbose)
         
-        # 4. Remover duplicatas
-        if self.config.drop_duplicates:
+        # 4. Remover duplicatas (otimizado: apenas por Date)
+        if self.config.drop_duplicates and self.config.date_column in df.columns:
+            original_len = len(df)
+            # OTIMIZAÇÃO: drop_duplicates apenas na coluna Date (muito mais rápido)
+            df = df.drop_duplicates(subset=[self.config.date_column], keep='first')
+            
+            if verbose > 0 and len(df) < original_len:
+                print(f"⚠️  Removidas {original_len - len(df):,} linhas duplicadas")
+        elif self.config.drop_duplicates:
+            # Fallback: drop_duplicates em todas as colunas (pode ser lento)
             original_len = len(df)
             df = df.drop_duplicates()
             
@@ -136,7 +150,7 @@ class DataLoader:
         
         return df
     
-    def _validate_columns(self, df: pd.DataFrame, verbose: int = 1) -> None:
+    def _validate_columns(self, df, verbose: int = 1) -> None:
         """Valida presença de colunas obrigatórias."""
         missing_required = []
         
@@ -162,8 +176,11 @@ class DataLoader:
             if missing_optional:
                 print(f"⚠️  Colunas opcionais faltando: {missing_optional}")
     
-    def _handle_missing_values(self, df: pd.DataFrame, verbose: int = 1) -> pd.DataFrame:
+    def _handle_missing_values(self, df, verbose: int = 1):
         """Trata missing values."""
+        # Lazy import para evitar RecursionError
+        import numpy as np
+        
         missing_before = df.isnull().sum().sum()
         
         if missing_before == 0:
@@ -206,7 +223,7 @@ class DataLoader:
         
         return df
     
-    def _validate_ohlc(self, df: pd.DataFrame, verbose: int = 1) -> None:
+    def _validate_ohlc(self, df, verbose: int = 1) -> None:
         """Valida integridade de dados OHLC."""
         ohlc_cols = ['open', 'high', 'low', 'close']
         
@@ -265,7 +282,7 @@ class DataLoader:
         if verbose > 0:
             print("✅ Validação OHLC passou: todos os dados consistentes")
     
-    def get_info(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def get_info(self, df) -> Dict[str, Any]:
         """
         Retorna informações sobre o DataFrame.
         
@@ -275,6 +292,9 @@ class DataLoader:
         Returns:
             Dict com estatísticas
         """
+        # Lazy import para evitar RecursionError
+        import numpy as np
+        
         info = {
             'rows': len(df),
             'columns': len(df.columns),

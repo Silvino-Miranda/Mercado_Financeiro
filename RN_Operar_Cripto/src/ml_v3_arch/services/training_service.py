@@ -6,13 +6,15 @@ Princípios aplicados:
 - DIP: Depende de abstrações (BaseModel, BasePreprocessor)
 - OCP: Extensível para novos workflows de treino
 """
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 from pathlib import Path
 import time
 import json
 
-import numpy as np
-import pandas as pd
+# Lazy imports para evitar RecursionError do NumPy
+if TYPE_CHECKING:
+    import numpy as np
+    import pandas as pd
 
 from ..domain import ModelConfig
 from ..interfaces import BaseModel, BasePreprocessor
@@ -65,8 +67,8 @@ class TrainingService:
     
     def train(
         self,
-        df_train: pd.DataFrame,
-        df_val: Optional[pd.DataFrame] = None,
+        df_train: "pd.DataFrame",
+        df_val: Optional["pd.DataFrame"] = None,
         save_artifacts: bool = True,
         verbose: int = 1
     ) -> Dict[str, Any]:
@@ -211,6 +213,9 @@ class TrainingService:
     
     def _save_history(self, history: Any, path: Path) -> None:
         """Salva histórico de treino em JSON."""
+        # Lazy import para evitar RecursionError
+        import numpy as np
+        
         if hasattr(history, 'history'):
             history_dict = history.history
         else:
@@ -231,7 +236,7 @@ class TrainingService:
     
     def train_with_split(
         self,
-        df: pd.DataFrame,
+        df: "pd.DataFrame",
         train_ratio: float = 0.70,
         val_ratio: float = 0.15,
         **kwargs
