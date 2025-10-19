@@ -11,8 +11,6 @@ import random
 import sys
 import time
 from pathlib import Path
-import numpy as np
-import pandas as pd
 
 # Setup paths ANTES de imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -133,52 +131,12 @@ def cmd_train(args):
         model = model_factory.create_model(config=model_config)
         previous_history = {}
     
-    # 5. Criar Preprocessor simples (StandardScaler)
+    # 5. Criar Preprocessor (DataPreprocessorAdapter - pode ser serializado!)
     feature_cols = [c for c in df.columns if c not in ['Date', 'Close']]
     
-    # 5. Criar Preprocessor simples (StandardScaler)
-    from sklearn.preprocessing import StandardScaler
+    from src.ml_v3_arch.adapters.preprocessor_adapter import DataPreprocessorAdapter
     
-    class SimplePreprocessor:
-        def __init__(self, feature_cols, target_col, lookback):
-            self.feature_cols = feature_cols
-            self.target_col = target_col
-            self.lookback = lookback
-            self.scaler = StandardScaler()
-        
-        def fit_transform(self, df):
-            import pandas as pd
-            import numpy as np
-            # Normalizar features
-            X = df[self.feature_cols].values
-            X_scaled = self.scaler.fit_transform(X)
-            y = df[self.target_col].values
-            
-            # Criar sequências
-            X_seq, y_seq = [], []
-            for i in range(len(X_scaled) - self.lookback):
-                X_seq.append(X_scaled[i:i + self.lookback])
-                y_seq.append(y[i + self.lookback])
-            
-            return np.array(X_seq), np.array(y_seq)
-        
-        def transform(self, df):
-            """Transform sem fit (usa scaler já ajustado)."""
-            import numpy as np
-            # Usar scaler já fitted
-            X = df[self.feature_cols].values
-            X_scaled = self.scaler.transform(X)
-            y = df[self.target_col].values
-            
-            # Criar sequências
-            X_seq, y_seq = [], []
-            for i in range(len(X_scaled) - self.lookback):
-                X_seq.append(X_scaled[i:i + self.lookback])
-                y_seq.append(y[i + self.lookback])
-            
-            return np.array(X_seq), np.array(y_seq)
-    
-    preprocessor = SimplePreprocessor(
+    preprocessor = DataPreprocessorAdapter(
         feature_cols=feature_cols,
         target_col='Close',
         lookback=model_config.lookback
@@ -228,6 +186,17 @@ def cmd_train(args):
     )
     
     print(f"\n✅ Modelo salvo em: {model_path}")
+    
+    # 9.1 Salvar preprocessor (nome fixo, sem timestamp)
+    prep_dir = Path("artifacts/v3/preprocessors")
+    prep_dir.mkdir(parents=True, exist_ok=True)
+    prep_path = prep_dir / "preprocessor_lstm_v3.pkl"
+    
+    import pickle
+    with open(prep_path, 'wb') as f:
+        pickle.dump(preprocessor, f)
+    
+    print(f"✅ Preprocessor salvo em: {prep_path}")
     
     # 10. Salvar histórico (mesclando com histórico anterior se houver)
     history_path = "artifacts/v3/logs/history_lstm_v3.json"
@@ -338,6 +307,9 @@ def cmd_train_classifier(args):
 
 def cmd_evaluate(args):
     """Comando: evaluate - Avalia modelo usando EvaluationService v3."""
+    import numpy as np
+    import pandas as pd
+    
     print("\n" + "="*80)
     print("COMANDO: EVALUATE (v3 - Clean Architecture)")
     print("="*80 + "\n")
@@ -369,6 +341,19 @@ def cmd_evaluate(args):
         print(f"\n📦 Carregando modelo padrão: {model_path}")
         model = keras.models.load_model(model_path)
     
+    # 2.1 Carregar preprocessor salvo (CRÍTICO para desnormalização correta!)
+    prep_path = Path("artifacts/v3/preprocessors/preprocessor_lstm_v3.pkl")
+    
+    if not prep_path.exists():
+        print(f"❌ Preprocessor não encontrado: {prep_path}")
+        print("   Treine um modelo primeiro para gerar o preprocessor.")
+        return
+    
+    print(f"📦 Carregando preprocessor: {prep_path}")
+    import pickle
+    with open(prep_path, 'rb') as f:
+        preprocessor = pickle.load(f)
+    
     # 3. Extrair configuração do modelo (inferir do shape)
     input_shape = model.input_shape  # (None, lookback, n_features)
     lookback = input_shape[1]
@@ -396,22 +381,27 @@ def cmd_evaluate(args):
     print(f"   Período: {df_test['Date'].min()} → {df_test['Date'].max()}")
     print(f"   Samples: {len(df_test):,}")
     
-    # 5. Preprocessar dados de teste
-    from sklearn.preprocessing import StandardScaler
+    # 5. Preprocessar dados de teste USANDO O PREPROCESSOR SALVO
+    # IMPORTANTE: Usar o mesmo scaler do treino (sem refit!)
     
-    scaler = StandardScaler()
     X_test = df_test[feature_cols].values
-    X_test_scaled = scaler.fit_transform(X_test)
-    y_test = df_test[target_col].values
+    y_test = df_test[target_col].values.reshape(-1, 1)
+    
+    # Transform (sem fit!) usando scalers do treino
+    X_test_scaled = preprocessor.scaler_X.transform(X_test)
+    y_test_scaled = preprocessor.scaler_y.transform(y_test).ravel()
     
     # Criar sequências
     X_seq, y_seq = [], []
     for i in range(len(X_test_scaled) - lookback):
         X_seq.append(X_test_scaled[i:i + lookback])
-        y_seq.append(y_test[i + lookback])
+        y_seq.append(y_test_scaled[i + lookback])
     
     X_test_final = np.array(X_seq)
     y_test_final = np.array(y_seq)
+    
+    # Valores originais para comparação (sem normalizar, apenas pegar da fila)
+    y_test_original = y_test.ravel()[lookback:]
     
     print(f"\n� Preprocessamento:")
     print(f"   X_test: {X_test_final.shape}")
@@ -419,27 +409,30 @@ def cmd_evaluate(args):
     
     # 6. Fazer predições
     print(f"\n🔮 Gerando predições...")
-    y_pred = model.predict(X_test_final, verbose=0).flatten()
+    y_pred_scaled = model.predict(X_test_final, verbose=0).flatten()
     
-    # 7. Calcular métricas
+    # Desnormalizar predições para valores reais em $ usando scaler do treino!
+    y_pred_original = preprocessor.scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).ravel()
+    
+    # 7. Calcular métricas EM VALORES REAIS ($)
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
     
-    mae = mean_absolute_error(y_test_final, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_test_final, y_pred))
-    r2 = r2_score(y_test_final, y_pred)
-    mape = np.mean(np.abs((y_test_final - y_pred) / np.clip(y_test_final, 1e-6, None))) * 100
+    mae = mean_absolute_error(y_test_original, y_pred_original)
+    rmse = np.sqrt(mean_squared_error(y_test_original, y_pred_original))
+    r2 = r2_score(y_test_original, y_pred_original)
+    mape = np.mean(np.abs((y_test_original - y_pred_original) / np.clip(y_test_original, 1e-6, None))) * 100
     
-    # Hit rate (acerto de direção)
-    y_prev = y_test[lookback-1:-1]  # Valor anterior
-    true_dir = np.sign(y_test_final - y_prev)
-    pred_dir = np.sign(y_pred - y_prev)
+    # Hit rate (acerto de direção) - usar valores originais
+    y_prev = y_test.ravel()[lookback-1:-1]  # Valor anterior
+    true_dir = np.sign(y_test_original - y_prev)
+    pred_dir = np.sign(y_pred_original - y_prev)
     hit_rate = np.mean(true_dir == pred_dir)
     
     # 8. Exibir resultados
     print("\n" + "="*80)
     print("📊 RESULTADOS DA AVALIAÇÃO")
     print("="*80)
-    print(f"\n📈 Métricas de Erro:")
+    print(f"\n📈 Métricas de Erro (valores reais em $):")
     print(f"   MAE (Mean Absolute Error):  ${mae:,.2f}")
     print(f"   RMSE (Root Mean Squared):   ${rmse:,.2f}")
     print(f"   MAPE (Mean Abs % Error):    {mape:.2f}%")
@@ -449,10 +442,10 @@ def cmd_evaluate(args):
     print(f"   Hit Rate:                   {hit_rate*100:.2f}%")
     
     print(f"\n📊 Estatísticas:")
-    print(f"   Média Real:                 ${y_test_final.mean():,.2f}")
-    print(f"   Média Predita:              ${y_pred.mean():,.2f}")
-    print(f"   Std Real:                   ${y_test_final.std():,.2f}")
-    print(f"   Std Predita:                ${y_pred.std():,.2f}")
+    print(f"   Média Real:                 ${y_test_original.mean():,.2f}")
+    print(f"   Média Predita:              ${y_pred_original.mean():,.2f}")
+    print(f"   Std Real:                   ${y_test_original.std():,.2f}")
+    print(f"   Std Predita:                ${y_pred_original.std():,.2f}")
     
     # 9. Salvar métricas
     metrics = {
@@ -462,10 +455,10 @@ def cmd_evaluate(args):
         'r2_score': float(r2),
         'hit_rate': float(hit_rate),
         'n_samples': len(y_test_final),
-        'mean_true': float(y_test_final.mean()),
-        'mean_pred': float(y_pred.mean()),
-        'std_true': float(y_test_final.std()),
-        'std_pred': float(y_pred.std())
+        'mean_true': float(y_test_original.mean()),
+        'mean_pred': float(y_pred_original.mean()),
+        'std_true': float(y_test_original.std()),
+        'std_pred': float(y_pred_original.std())
     }
     
     metrics_path = Path("artifacts/v3/metrics")
@@ -484,6 +477,9 @@ def cmd_evaluate(args):
 
 def cmd_backtest(args):
     """Comando: backtest - Backtest usando BacktestService v3."""
+    import numpy as np
+    import pandas as pd
+    
     print("\n" + "="*80)
     print("COMANDO: BACKTEST (v3 - Clean Architecture)")
     print("="*80 + "\n")
@@ -531,6 +527,19 @@ def cmd_backtest(args):
         print(f"\n📦 Carregando modelo padrão: {model_path}")
         model = keras.models.load_model(model_path)
     
+    # 3.1 Carregar preprocessor salvo (CRÍTICO para desnormalização correta!)
+    prep_path = Path("artifacts/v3/preprocessors/preprocessor_lstm_v3.pkl")
+    
+    if not prep_path.exists():
+        print(f"❌ Preprocessor não encontrado: {prep_path}")
+        print("   Treine um modelo primeiro para gerar o preprocessor.")
+        return
+    
+    print(f"📦 Carregando preprocessor: {prep_path}")
+    import pickle
+    with open(prep_path, 'rb') as f:
+        preprocessor = pickle.load(f)
+    
     # 4. Extrair configuração do modelo
     input_shape = model.input_shape
     lookback = input_shape[1]
@@ -554,35 +563,36 @@ def cmd_backtest(args):
     print(f"   Fim: {df_backtest['Date'].max()}")
     print(f"   Samples: {len(df_backtest):,}")
     
-    # 6. Preparar features e fazer predições
+    # 6. Preparar features e fazer predições USANDO O PREPROCESSOR SALVO
     feature_cols = [c for c in df_backtest.columns if c not in ['Date', 'Close']]
     
     if len(feature_cols) != n_features:
         feature_cols = feature_cols[:n_features]
     
-    from sklearn.preprocessing import StandardScaler
-    
-    scaler = StandardScaler()
+    # IMPORTANTE: Usar scalers do treino (sem refit!)
     X = df_backtest[feature_cols].values
-    X_scaled = scaler.fit_transform(X)
+    X_scaled = preprocessor.scaler_X.transform(X)
     
-    # Criar sequências e fazer predições
-    predictions = []
-    actual_prices = []
+    # Criar sequências e fazer predições em BATCH (muito mais rápido!)
+    print(f"\n🔮 Criando sequências para predição em batch...")
     
-    print(f"\n🔮 Gerando predições para backtest...")
-    
+    # Criar todas as sequências de uma vez
+    X_sequences = []
     for i in range(lookback, len(X_scaled)):
-        # Sequência de entrada
-        X_seq = X_scaled[i-lookback:i].reshape(1, lookback, n_features)
-        
-        # Predição
-        y_pred = model.predict(X_seq, verbose=0)[0][0]
-        predictions.append(y_pred)
-        actual_prices.append(df_backtest['Close'].iloc[i])
+        X_sequences.append(X_scaled[i-lookback:i])
     
-    predictions = np.array(predictions)
-    actual_prices = np.array(actual_prices)
+    X_sequences = np.array(X_sequences)  # Shape: (n_samples, lookback, n_features)
+    actual_prices = df_backtest['Close'].iloc[lookback:].values
+    
+    print(f"   Shape das sequências: {X_sequences.shape}")
+    print(f"   Total de predições: {len(X_sequences):,}")
+    
+    # Fazer predições em batch (1 única chamada ao modelo!)
+    print(f"\n🚀 Gerando predições em batch (RÁPIDO)...")
+    predictions_scaled = model.predict(X_sequences, verbose=1, batch_size=512).flatten()
+    
+    # Desnormalizar predições para valores reais em $ usando scaler do treino!
+    predictions = preprocessor.scaler_y.inverse_transform(predictions_scaled.reshape(-1, 1)).ravel()
     
     # 7. Simular trading
     print(f"\n💹 Simulando trades...")
