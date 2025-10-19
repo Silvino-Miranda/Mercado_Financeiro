@@ -11,6 +11,8 @@ import random
 import sys
 import time
 from pathlib import Path
+import numpy as np
+import pandas as pd
 
 # Setup paths ANTES de imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -103,13 +105,36 @@ def cmd_train(args):
     print(f"   Dropout: {model_config.dropout}")
     print(f"   Learning rate: {model_config.learning_rate}")
     
-    # 4. Criar ModelFactory e criar modelo
-    model_factory = ModelFactory()
-    feature_cols = [c for c in df.columns if c not in ['Date', 'Close']]
-    n_features = len(feature_cols)
+    # 4. Verificar se deve carregar modelo existente (--resume)
+    model_path_saved = Path('artifacts/v3/models/lstm_v3.keras')
+    history_path_saved = Path('artifacts/v3/logs/history_lstm_v3.json')
     
-    # Criar modelo (já define input_shape automaticamente no primeiro fit)
-    model = model_factory.create_model(config=model_config)
+    if args.resume and model_path_saved.exists():
+        print(f"\n🔄 MODO RESUME: Carregando modelo existente...")
+        from tensorflow import keras
+        model = keras.models.load_model(model_path_saved)
+        print(f"   ✅ Modelo carregado: {model_path_saved}")
+        
+        # Carregar histórico anterior se existir
+        previous_history = {}
+        if history_path_saved.exists():
+            with open(history_path_saved, 'r') as f:
+                previous_history = json.load(f)
+            epochs_trained = len(previous_history.get('loss', []))
+            print(f"   ✅ Histórico carregado: {epochs_trained} épocas já treinadas")
+            print(f"   🔥 Continuando treinamento por mais {model_config.epochs} épocas...")
+    else:
+        if args.resume:
+            print(f"\n⚠️  RESUME solicitado mas modelo não encontrado em {model_path_saved}")
+            print(f"   🆕 Criando novo modelo...")
+        
+        # 4b. Criar ModelFactory e criar modelo novo
+        model_factory = ModelFactory()
+        model = model_factory.create_model(config=model_config)
+        previous_history = {}
+    
+    # 5. Criar Preprocessor simples (StandardScaler)
+    feature_cols = [c for c in df.columns if c not in ['Date', 'Close']]
     
     # 5. Criar Preprocessor simples (StandardScaler)
     from sklearn.preprocessing import StandardScaler
@@ -192,31 +217,44 @@ def cmd_train(args):
     history = result['history']
     metadata = result['metadata']
     
-    # 9. Salvar modelo
-    ts = time.strftime("%Y%m%d_%H%M%S")
+    # 9. Salvar modelo (nome fixo, sem timestamp - sobrescreve sempre)
     persistence = ModelPersistence(base_dir='artifacts/v3')
     
     model_path = persistence.save_keras_model(
         model=model,
-        name=f'lstm_v3_{ts}',
-        metadata=metadata
+        name='lstm_v3',
+        metadata=metadata,
+        add_timestamp=False  # Nome fixo: lstm_v3.keras
     )
     
     print(f"\n✅ Modelo salvo em: {model_path}")
     
-    # 10. Salvar histórico
-    history_path = f"artifacts/v3/logs/history_{ts}.json"
+    # 10. Salvar histórico (mesclando com histórico anterior se houver)
+    history_path = "artifacts/v3/logs/history_lstm_v3.json"
+    Path("artifacts/v3/logs").mkdir(parents=True, exist_ok=True)
+    
+    # Mesclar com histórico anterior (se modo resume)
+    if previous_history:
+        combined_history = {}
+        for key in history.keys():
+            # Concatena valores antigos + novos
+            combined_history[key] = previous_history.get(key, []) + history[key]
+        print(f"   🔄 Histórico mesclado: {len(previous_history.get('loss', []))} épocas antigas + {len(history.get('loss', []))} novas")
+    else:
+        combined_history = history
+    
     with open(history_path, 'w') as f:
-        json.dump(history, f, indent=2)
+        json.dump(combined_history, f, indent=2)
     
     print(f"✅ Histórico salvo em: {history_path}")
     
     # 9. Resumo final
+    total_epochs = len(combined_history.get('loss', []))
     print(f"\n📊 RESUMO DO TREINAMENTO:")
-    print(f"   Épocas executadas: {len(history.get('loss', []))}")
-    print(f"   Loss final (treino): {history.get('loss', [])[-1]:.6f}")
-    print(f"   Loss final (val): {history.get('val_loss', [])[-1]:.6f}")
-    print(f"   MAE final (val): {history.get('val_mae', [])[-1]:.6f}")
+    print(f"   Épocas TOTAIS acumuladas: {total_epochs}")
+    print(f"   Loss final (treino): {combined_history.get('loss', [])[-1]:.6f}")
+    print(f"   Loss final (val): {combined_history.get('val_loss', [])[-1]:.6f}")
+    print(f"   MAE final (val): {combined_history.get('val_mae', [])[-1]:.6f}")
 
 
 def cmd_train_classifier(args):
@@ -315,34 +353,133 @@ def cmd_evaluate(args):
     data_loader = DataLoader(data_config)
     df = data_loader.load(Path(args.csv), verbose=1)
     
-    # 2. Carregar último modelo
-    persistence = ModelPersistence(base_dir='artifacts/v3/checkpoints')
+    # 2. Carregar modelo especificado ou o último treinado
+    from tensorflow import keras
     
-    checkpoint_dir = Path("artifacts/v3/checkpoints")
-    models = sorted(checkpoint_dir.glob("lstm_v3_*.keras"))
+    if args.model and Path(args.model).exists():
+        model_path = Path(args.model)
+        print(f"\n📦 Carregando modelo especificado: {model_path}")
+        model = keras.models.load_model(model_path)
+    else:
+        # Tentar carregar modelo padrão
+        model_path = Path("artifacts/v3/models/lstm_v3.keras")
+        if not model_path.exists():
+            print("❌ Modelo não encontrado! Execute 'train' primeiro ou especifique --model.")
+            return
+        print(f"\n📦 Carregando modelo padrão: {model_path}")
+        model = keras.models.load_model(model_path)
     
-    if not models:
-        print("❌ Nenhum modelo v3 encontrado! Execute 'train' primeiro.")
-        return
+    # 3. Extrair configuração do modelo (inferir do shape)
+    input_shape = model.input_shape  # (None, lookback, n_features)
+    lookback = input_shape[1]
+    n_features = input_shape[2]
     
-    model_name = models[-1].stem
-    print(f"📦 Carregando modelo: {model_name}")
+    print(f"\n� Configuração detectada:")
+    print(f"   Lookback: {lookback}")
+    print(f"   Features: {n_features}")
     
-    model, metadata = persistence.load_model(model_name)
+    # 4. Preparar dados de teste
+    feature_cols = [c for c in df.columns if c not in ['Date', 'Close']]
+    target_col = 'Close'
     
-    # 3. Criar EvaluationService
-    evaluation_service = EvaluationService()
+    if len(feature_cols) != n_features:
+        print(f"⚠️  AVISO: CSV tem {len(feature_cols)} features, modelo espera {n_features}")
+        print("   Ajustando features...")
+        feature_cols = feature_cols[:n_features]
     
-    # 4. Avaliar
-    print("\n📊 Avaliando modelo...\n")
-    
-    # Preprocessar dados de teste (últimos 15%)
+    # Usar últimos 15% para teste
     n = len(df)
-    i_val = int(n * 0.85)
-    df_test = df.iloc[i_val:]
+    i_test = int(n * 0.85)
+    df_test = df.iloc[i_test:].reset_index(drop=True)
     
-    # TODO: Implementar avaliação completa
-    print("✅ Avaliação concluída!")
+    print(f"\n📊 Dados de teste:")
+    print(f"   Período: {df_test['Date'].min()} → {df_test['Date'].max()}")
+    print(f"   Samples: {len(df_test):,}")
+    
+    # 5. Preprocessar dados de teste
+    from sklearn.preprocessing import StandardScaler
+    
+    scaler = StandardScaler()
+    X_test = df_test[feature_cols].values
+    X_test_scaled = scaler.fit_transform(X_test)
+    y_test = df_test[target_col].values
+    
+    # Criar sequências
+    X_seq, y_seq = [], []
+    for i in range(len(X_test_scaled) - lookback):
+        X_seq.append(X_test_scaled[i:i + lookback])
+        y_seq.append(y_test[i + lookback])
+    
+    X_test_final = np.array(X_seq)
+    y_test_final = np.array(y_seq)
+    
+    print(f"\n� Preprocessamento:")
+    print(f"   X_test: {X_test_final.shape}")
+    print(f"   y_test: {y_test_final.shape}")
+    
+    # 6. Fazer predições
+    print(f"\n🔮 Gerando predições...")
+    y_pred = model.predict(X_test_final, verbose=0).flatten()
+    
+    # 7. Calcular métricas
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    
+    mae = mean_absolute_error(y_test_final, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_test_final, y_pred))
+    r2 = r2_score(y_test_final, y_pred)
+    mape = np.mean(np.abs((y_test_final - y_pred) / np.clip(y_test_final, 1e-6, None))) * 100
+    
+    # Hit rate (acerto de direção)
+    y_prev = y_test[lookback-1:-1]  # Valor anterior
+    true_dir = np.sign(y_test_final - y_prev)
+    pred_dir = np.sign(y_pred - y_prev)
+    hit_rate = np.mean(true_dir == pred_dir)
+    
+    # 8. Exibir resultados
+    print("\n" + "="*80)
+    print("📊 RESULTADOS DA AVALIAÇÃO")
+    print("="*80)
+    print(f"\n📈 Métricas de Erro:")
+    print(f"   MAE (Mean Absolute Error):  ${mae:,.2f}")
+    print(f"   RMSE (Root Mean Squared):   ${rmse:,.2f}")
+    print(f"   MAPE (Mean Abs % Error):    {mape:.2f}%")
+    print(f"   R² Score:                   {r2:.4f}")
+    
+    print(f"\n🎯 Acurácia Direcional:")
+    print(f"   Hit Rate:                   {hit_rate*100:.2f}%")
+    
+    print(f"\n📊 Estatísticas:")
+    print(f"   Média Real:                 ${y_test_final.mean():,.2f}")
+    print(f"   Média Predita:              ${y_pred.mean():,.2f}")
+    print(f"   Std Real:                   ${y_test_final.std():,.2f}")
+    print(f"   Std Predita:                ${y_pred.std():,.2f}")
+    
+    # 9. Salvar métricas
+    metrics = {
+        'mae': float(mae),
+        'rmse': float(rmse),
+        'mape': float(mape),
+        'r2_score': float(r2),
+        'hit_rate': float(hit_rate),
+        'n_samples': len(y_test_final),
+        'mean_true': float(y_test_final.mean()),
+        'mean_pred': float(y_pred.mean()),
+        'std_true': float(y_test_final.std()),
+        'std_pred': float(y_pred.std())
+    }
+    
+    metrics_path = Path("artifacts/v3/metrics")
+    metrics_path.mkdir(parents=True, exist_ok=True)
+    
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    metrics_file = metrics_path / f"evaluation_{timestamp}.json"
+    
+    with open(metrics_file, 'w') as f:
+        json.dump(metrics, f, indent=2)
+    
+    print(f"\n✅ Métricas salvas em: {metrics_file}")
+    print("="*80)
 
 
 def cmd_backtest(args):
@@ -361,10 +498,12 @@ def cmd_backtest(args):
         threshold_bps=args.threshold_bps
     )
     
-    print(f"💰 Configuração do backtest:")
+    print("💰 Configuração do backtest:")
     print(f"   Capital inicial: ${backtest_config.initial_capital:,.2f}")
     print(f"   Fee: {backtest_config.fee_bps} bps")
     print(f"   Slippage: {backtest_config.slippage_bps} bps")
+    print(f"   Position size: {backtest_config.position_size*100:.0f}%")
+    print(f"   Threshold: {args.threshold_bps} bps")
     
     # 2. Carregar dados
     data_config = DataLoadConfig(
@@ -377,23 +516,225 @@ def cmd_backtest(args):
     data_loader = DataLoader(data_config)
     df = data_loader.load(Path(args.csv), verbose=1)
     
-    # 3. Filtrar período de backtest
+    # 3. Carregar modelo
+    from tensorflow import keras
+    
+    if args.model and Path(args.model).exists():
+        model_path = Path(args.model)
+        print(f"\n📦 Carregando modelo especificado: {model_path}")
+        model = keras.models.load_model(model_path)
+    else:
+        model_path = Path("artifacts/v3/models/lstm_v3.keras")
+        if not model_path.exists():
+            print("❌ Modelo não encontrado! Execute 'train' primeiro ou especifique --model.")
+            return
+        print(f"\n📦 Carregando modelo padrão: {model_path}")
+        model = keras.models.load_model(model_path)
+    
+    # 4. Extrair configuração do modelo
+    input_shape = model.input_shape
+    lookback = input_shape[1]
+    n_features = input_shape[2]
+    
+    print(f"\n🔍 Configuração detectada:")
+    print(f"   Lookback: {lookback}")
+    print(f"   Features: {n_features}")
+    
+    # 5. Filtrar período de backtest
     if args.start:
         df_backtest = df[df['Date'] >= args.start].reset_index(drop=True)
     else:
         # Usar últimos 15% como backtest
         n = len(df)
-        i_val = int(n * 0.85)
-        df_backtest = df.iloc[i_val:].reset_index(drop=True)
+        i_test = int(n * 0.85)
+        df_backtest = df.iloc[i_test:].reset_index(drop=True)
     
-    print(f"\n📅 Período: {df_backtest['Date'].min()} a {df_backtest['Date'].max()}")
-    print(f"📊 Amostras: {len(df_backtest):,}")
+    print(f"\n📅 Período de backtest:")
+    print(f"   Início: {df_backtest['Date'].min()}")
+    print(f"   Fim: {df_backtest['Date'].max()}")
+    print(f"   Samples: {len(df_backtest):,}")
     
-    # 4. Criar BacktestService
-    backtest_service = BacktestService(backtest_config)
+    # 6. Preparar features e fazer predições
+    feature_cols = [c for c in df_backtest.columns if c not in ['Date', 'Close']]
     
-    # 5. TODO: Implementar backtest completo
-    print("\n✅ Backtest em desenvolvimento...")
+    if len(feature_cols) != n_features:
+        feature_cols = feature_cols[:n_features]
+    
+    from sklearn.preprocessing import StandardScaler
+    
+    scaler = StandardScaler()
+    X = df_backtest[feature_cols].values
+    X_scaled = scaler.fit_transform(X)
+    
+    # Criar sequências e fazer predições
+    predictions = []
+    actual_prices = []
+    
+    print(f"\n🔮 Gerando predições para backtest...")
+    
+    for i in range(lookback, len(X_scaled)):
+        # Sequência de entrada
+        X_seq = X_scaled[i-lookback:i].reshape(1, lookback, n_features)
+        
+        # Predição
+        y_pred = model.predict(X_seq, verbose=0)[0][0]
+        predictions.append(y_pred)
+        actual_prices.append(df_backtest['Close'].iloc[i])
+    
+    predictions = np.array(predictions)
+    actual_prices = np.array(actual_prices)
+    
+    # 7. Simular trading
+    print(f"\n💹 Simulando trades...")
+    
+    capital = backtest_config.initial_capital
+    position = 0  # BTC holdings
+    trades = []
+    capital_history = [capital]
+    
+    fee_rate = backtest_config.fee_bps / 10000
+    slippage_rate = backtest_config.slippage_bps / 10000
+    threshold_rate = args.threshold_bps / 10000
+    
+    for i in range(len(predictions) - 1):
+        current_price = actual_prices[i]
+        predicted_price = predictions[i]
+        next_price = actual_prices[i + 1]
+        
+        # Calcular mudança esperada
+        expected_change = (predicted_price - current_price) / current_price
+        
+        # Decisão de trading
+        if expected_change > threshold_rate and position == 0:
+            # BUY signal
+            buy_price = current_price * (1 + slippage_rate)
+            position = (capital * backtest_config.position_size) / buy_price
+            capital -= position * buy_price * (1 + fee_rate)
+            
+            trades.append({
+                'type': 'BUY',
+                'price': buy_price,
+                'amount': position,
+                'capital': capital,
+                'date': df_backtest['Date'].iloc[lookback + i]
+            })
+        
+        elif expected_change < -threshold_rate and position > 0:
+            # SELL signal
+            sell_price = current_price * (1 - slippage_rate)
+            capital += position * sell_price * (1 - fee_rate)
+            
+            trades.append({
+                'type': 'SELL',
+                'price': sell_price,
+                'amount': position,
+                'capital': capital,
+                'date': df_backtest['Date'].iloc[lookback + i]
+            })
+            
+            position = 0
+        
+        # Atualizar capital total (incluindo posição aberta)
+        total_value = capital + (position * next_price if position > 0 else 0)
+        capital_history.append(total_value)
+    
+    # Fechar posição final se aberta
+    if position > 0:
+        final_price = actual_prices[-1] * (1 - slippage_rate)
+        capital += position * final_price * (1 - fee_rate)
+        trades.append({
+            'type': 'SELL (CLOSE)',
+            'price': final_price,
+            'amount': position,
+            'capital': capital,
+            'date': df_backtest['Date'].iloc[-1]
+        })
+        position = 0
+    
+    # 8. Calcular métricas de performance
+    final_capital = capital
+    total_return = (final_capital - backtest_config.initial_capital) / backtest_config.initial_capital
+    
+    capital_array = np.array(capital_history)
+    returns = np.diff(capital_array) / capital_array[:-1]
+    
+    sharpe_ratio = (returns.mean() / returns.std()) * np.sqrt(252 * 48) if returns.std() > 0 else 0
+    max_drawdown = np.min(capital_array / np.maximum.accumulate(capital_array) - 1)
+    
+    # Buy and Hold
+    buy_hold_return = (actual_prices[-1] - actual_prices[0]) / actual_prices[0]
+    
+    # 9. Exibir resultados
+    print("\n" + "="*80)
+    print("💰 RESULTADOS DO BACKTEST")
+    print("="*80)
+    
+    print(f"\n📊 Performance:")
+    print(f"   Capital Inicial:        ${backtest_config.initial_capital:,.2f}")
+    print(f"   Capital Final:          ${final_capital:,.2f}")
+    print(f"   Retorno Total:          {total_return*100:+.2f}%")
+    print(f"   Buy & Hold:             {buy_hold_return*100:+.2f}%")
+    print(f"   Alpha:                  {(total_return - buy_hold_return)*100:+.2f}%")
+    
+    print(f"\n📈 Métricas de Risco:")
+    print(f"   Sharpe Ratio:           {sharpe_ratio:.2f}")
+    print(f"   Max Drawdown:           {max_drawdown*100:.2f}%")
+    print(f"   Volatilidade:           {returns.std()*100:.2f}%")
+    
+    print(f"\n🔄 Atividade de Trading:")
+    print(f"   Total de Trades:        {len(trades)}")
+    print(f"   Trades por Dia:         {len(trades) / (len(capital_history) / 48):.2f}")
+    
+    if len(trades) > 0:
+        print(f"\n📋 Últimos 5 Trades:")
+        for trade in trades[-5:]:
+            print(f"   {trade['date']}: {trade['type']:12s} @ ${trade['price']:,.2f}")
+    
+    # 10. Salvar resultados
+    backtest_results = {
+        'config': {
+            'initial_capital': backtest_config.initial_capital,
+            'fee_bps': backtest_config.fee_bps,
+            'slippage_bps': backtest_config.slippage_bps,
+            'threshold_bps': args.threshold_bps
+        },
+        'performance': {
+            'final_capital': float(final_capital),
+            'total_return': float(total_return),
+            'buy_hold_return': float(buy_hold_return),
+            'alpha': float(total_return - buy_hold_return),
+            'sharpe_ratio': float(sharpe_ratio),
+            'max_drawdown': float(max_drawdown),
+            'volatility': float(returns.std())
+        },
+        'trading': {
+            'n_trades': len(trades),
+            'trades_per_day': float(len(trades) / (len(capital_history) / 48))
+        }
+    }
+    
+    results_path = Path("artifacts/v3/backtest")
+    results_path.mkdir(parents=True, exist_ok=True)
+    
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Salvar JSON
+    results_file = results_path / f"backtest_{timestamp}.json"
+    with open(results_file, 'w') as f:
+        json.dump(backtest_results, f, indent=2)
+    
+    # Salvar equity curve
+    equity_df = pd.DataFrame({
+        'capital': capital_history
+    })
+    equity_file = results_path / f"equity_{timestamp}.csv"
+    equity_df.to_csv(equity_file, index=False)
+    
+    print(f"\n✅ Resultados salvos:")
+    print(f"   Métricas: {results_file}")
+    print(f"   Equity curve: {equity_file}")
+    print("="*80)
 
 
 def main():
@@ -441,6 +782,7 @@ Comparação v2 vs v3:
     parser_train.add_argument("--dropout", type=float, default=0.3, help="Dropout rate")
     parser_train.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser_train.add_argument("--patience", type=int, default=10, help="Early stopping patience")
+    parser_train.add_argument("--resume", action="store_true", help="Continuar treinamento do modelo salvo")
     
     # === TRAIN CLASSIFIER ===
     parser_tc = subparsers.add_parser("train_classifier", help="Treina classificador direcional")
@@ -455,11 +797,12 @@ Comparação v2 vs v3:
     # === EVALUATE ===
     parser_eval = subparsers.add_parser("evaluate", help="Avalia modelo vs baselines")
     parser_eval.add_argument("--csv", required=True, help="Caminho do CSV")
-    parser_eval.add_argument("--lookback", type=int, default=60, help="Janela temporal")
+    parser_eval.add_argument("--model", type=str, default=None, help="Caminho do modelo (padrão: artifacts/v3/models/lstm_v3.keras)")
     
     # === BACKTEST ===
     parser_bt = subparsers.add_parser("backtest", help="Backtest com custos")
     parser_bt.add_argument("--csv", required=True, help="Caminho do CSV")
+    parser_bt.add_argument("--model", type=str, default=None, help="Caminho do modelo (padrão: artifacts/v3/models/lstm_v3.keras)")
     parser_bt.add_argument("--start", type=str, default=None, help="Data início (YYYY-MM-DD)")
     parser_bt.add_argument("--fee-bps", type=float, default=10.0, help="Taxa exchange (bps)")
     parser_bt.add_argument("--slippage-bps", type=float, default=5.0, help="Slippage (bps)")

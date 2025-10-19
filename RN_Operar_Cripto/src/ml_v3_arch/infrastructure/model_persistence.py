@@ -43,6 +43,7 @@ class ModelPersistence:
         model: Any,  # keras.Model
         name: str,
         metadata: Optional[Dict[str, Any]] = None,
+        add_timestamp: bool = True,
         verbose: int = 1
     ) -> Path:
         """
@@ -52,6 +53,7 @@ class ModelPersistence:
             model: Modelo Keras
             name: Nome do modelo
             metadata: Metadata adicional
+            add_timestamp: Se True, adiciona timestamp ao nome. Se False, usa nome fixo.
             verbose: Nível de verbosidade
             
         Returns:
@@ -61,7 +63,11 @@ class ModelPersistence:
         model_dir = self.base_dir / "models"
         model_dir.mkdir(parents=True, exist_ok=True)
         
-        model_path = model_dir / f"{name}_{timestamp}.keras"
+        # Adicionar timestamp apenas se solicitado
+        if add_timestamp:
+            model_path = model_dir / f"{name}_{timestamp}.keras"
+        else:
+            model_path = model_dir / f"{name}.keras"
         
         try:
             model.save(model_path)

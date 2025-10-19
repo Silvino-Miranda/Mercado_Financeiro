@@ -10,7 +10,7 @@ Write-Host "🔧 Ativando ambiente .venv..."
 & .\.venv\Scripts\Activate.ps1
 
 # Parâmetros padrão
-$csv = "data/BTCUSDT_30m_test.csv"
+$csv = "data/BTCUSDT_30m_full.csv"
 $epochs = 10
 $units = 64
 $lookback = 60
