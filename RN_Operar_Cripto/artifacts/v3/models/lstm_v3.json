@@ -1,10 +1,10 @@
 {
   "train_samples": 99865,
   "val_samples": 21400,
-  "preprocess_time": 0.9723882675170898,
-  "train_time": 2866.4910039901733,
-  "total_time": 2867.4633922576904,
+  "preprocess_time": 0.6716470718383789,
+  "train_time": 11611.00455236435,
+  "total_time": 11611.676199436188,
   "timestamp": null,
-  "saved_at": "20251019_145528",
+  "saved_at": "20251019_195627",
   "model_path": "artifacts\\v3\\models\\lstm_v3.keras"
 }
